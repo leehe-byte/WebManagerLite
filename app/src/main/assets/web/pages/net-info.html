@@ -1,0 +1,262 @@
+<!-- 快捷控制卡片 -->
+<div class="card">
+    <div class="card-header">
+        <h3>快捷控制</h3>
+    </div>
+    <div class="card-body">
+        <div class="info-table">
+            <!-- 数据连接开关 -->
+            <div class="flex-between" style="padding: 12px 0;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 20px;">📶</span>
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="font-size: 14px; font-weight: 500;">数据连接</span>
+                        <span id="ctrl-data-status" style="font-size: 11px; color: var(--text-sub);">状态未知</span>
+                    </div>
+                </div>
+                <div class="ios-switch">
+                    <input type="checkbox" id="ctrl-data-switch">
+                    <label for="ctrl-data-switch" class="ios-slider"></label>
+                </div>
+            </div>
+
+            <!-- 漫游数据开关 -->
+            <div class="flex-between" style="padding: 12px 0; border-top: 1px solid var(--border-color);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 20px;">🌐</span>
+                    <span style="font-size: 14px; font-weight: 500;">漫游数据</span>
+                </div>
+                <div class="ios-switch">
+                    <input type="checkbox" id="ctrl-roam-switch">
+                    <label for="ctrl-roam-switch" class="ios-slider"></label>
+                </div>
+            </div>
+
+            <!-- NFC 碰一碰开关 -->
+            <div class="flex-between" style="padding: 12px 0; border-top: 1px solid var(--border-color); display: none;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 20px;">🤝</span>
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="font-size: 14px; font-weight: 500;">NFC 碰一碰</span>
+                        <span id="ctrl-nfc-status" style="font-size: 11px; color: var(--text-sub);">状态未知</span>
+                    </div>
+                </div>
+                <div class="ios-switch">
+                    <input type="checkbox" id="ctrl-nfc-switch">
+                    <label for="ctrl-nfc-switch" class="ios-slider"></label>
+                </div>
+            </div>
+
+            <!-- SIM 卡切换 -->
+            <div id="ctrl-sim-container" class="flex-between" style="padding: 12px 0; border-top: 1px solid var(--border-color); display: none;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 20px;">💳</span>
+                    <span style="font-size: 14px; font-weight: 500;">SIM 卡槽</span>
+                </div>
+                <div class="segmented-control">
+                    <div id="sim-btn-0" class="seg-item active" onclick="switchSim(0)">插拔卡</div>
+                    <div id="sim-btn-1" class="seg-item" onclick="switchSim(1)">内置卡</div>
+                </div>
+            </div>
+
+            <!-- 网络模式控制 -->
+            <div style="margin-top: 10px; background: var(--inner-bg); padding: 2px 10px; border-radius: 8px; text-align: right; border: 1px solid var(--border-color);">
+                <div style="padding: 8px 0 4px 0;">
+                    <div class="flex-between">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span style="font-size: 20px;">📡</span>
+                            <span style="font-size: 14px; font-weight: 500;">网络模式</span>
+                        </div>
+                        <div id="net-mode-picker-btn" class="modern-input picker-trigger" style="width: auto; margin-top: 0; padding: 4px 32px 4px 8px; font-size: 12px; cursor: pointer; text-align: left;" onclick="showNetModePicker()">
+                            正在获取...
+                        </div>
+                    </div>
+                    <button class="badge" onclick="applyNetMode()" style="background: var(--primary); color: #fff; border: none; padding: 5px 15px; cursor: pointer; font-weight: normal; margin-top: 12px; margin-bottom: 4px;">应用更改</button>
+                </div>
+            </div>
+
+            <!-- USB 上网协议 -->
+            <div style="margin-top: 10px; background: var(--inner-bg); padding: 2px 10px; border-radius: 8px; text-align: right; border: 1px solid var(--border-color);">
+                <div style="padding: 8px 0 2px 0;">
+                    <div class="flex-between">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span style="font-size: 20px;">🔌</span>
+                            <div style="display: flex; flex-direction: column; text-align: left;">
+                                <span style="font-size: 14px; font-weight: 500;">USB 上网协议</span>
+                                <span style="font-size: 11px; color: var(--text-sub);">切换后设备将自动重启应用</span>
+                            </div>
+                        </div>
+                        <div id="usb-picker-btn" class="modern-input picker-trigger" style="width: auto; margin-top: 0; padding: 4px 32px 4px 8px; font-size: 12px; cursor: pointer; text-align: left;" onclick="showUsbPicker()">
+                            正在获取...
+                        </div>
+                    </div>
+                    <button class="badge" onclick="applyUsbSetting()" style="background: var(--primary); color: #fff; border: none; padding: 5px 15px; cursor: pointer; font-weight: normal; margin-top: 12px; margin-bottom: 4px;">应用并重启</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 网络信息可视化 -->
+<div class="card">
+    <div class="card-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="background: linear-gradient(135deg, #42e695 0%, #3bb2b8 100%); width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px;">🌐</div>
+            <h3 style="margin: 0;">网络信息</h3>
+        </div>
+    </div>
+    <div class="card-body">
+        <table class="info-table">
+            <tr>
+                <td>接入状态</td>
+                <td><span id="det-net-type-tag" class="badge" style="background: rgba(24, 144, 255, 0.1); color: var(--primary); padding: 2px 8px; border-radius: 10px; font-size: 11px;">--</span> <span id="det-net-mode">--</span></td>
+            </tr>
+            <tr id="row-cell-id">
+                <td>小区 ID (CID)</td>
+                <td id="det-cell-id">--</td>
+            </tr>
+            <tr>
+                <td>频段 BAND</td>
+                <td id="det-band" style="font-weight: 600;">--</td>
+            </tr>
+            <tr id="row-bandwidth">
+                <td>带宽 BW</td>
+                <td id="det-bandwidth">--</td>
+            </tr>
+            <tr>
+                <td>频道 ARFCN</td>
+                <td id="det-fcn">--</td>
+            </tr>
+            <tr>
+                <td>小区标识 PCI</td>
+                <td id="det-pci">--</td>
+            </tr>
+            <!-- 信号强度 RSRP -->
+            <tr>
+                <td style="vertical-align: middle;">
+                    RSRP <span class="help-icon" onclick="showSignalHelp('rsrp')">?</span>
+                </td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 8px; justify-content: flex-end;">
+                        <span id="txt-rsrp" style="font-size: 12px; font-weight: 600;">--</span>
+                        <div style="width: 120px; height: 10px; background: var(--bg); border-radius: 5px; overflow: hidden; position: relative;">
+                            <div id="bar-rsrp" style="width: 0%; height: 100%; background: linear-gradient(to right, #ff4d4f, #faad14, #52c41a); transition: width 0.5s;"></div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            <!-- 信号强度 RSSI -->
+            <tr id="row-rssi">
+                <td style="vertical-align: middle;">
+                    RSSI <span class="help-icon" onclick="showSignalHelp('rssi')">?</span>
+                </td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 8px; justify-content: flex-end;">
+                        <span id="txt-rssi" style="font-size: 12px; font-weight: 600;">--</span>
+                        <div style="width: 120px; height: 10px; background: var(--bg); border-radius: 5px; overflow: hidden; position: relative;">
+                            <div id="bar-rssi" style="width: 0%; height: 100%; background: linear-gradient(to right, #ff4d4f, #faad14, #52c41a); transition: width 0.5s;"></div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            <!-- 信号质量 RSRQ -->
+            <tr>
+                <td style="vertical-align: middle;">信号质量 RSRQ</td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 8px; justify-content: flex-end;">
+                        <span id="txt-rsrq" style="font-size: 12px; font-weight: 600;">--</span>
+                        <div style="width: 120px; height: 10px; background: var(--bg); border-radius: 5px; overflow: hidden;">
+                            <div id="bar-rsrq" style="width: 0%; height: 100%; background: linear-gradient(to right, #faad14, #52c41a); transition: width 0.5s;"></div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            <!-- 信噪比 SINR -->
+            <tr>
+                <td style="vertical-align: middle;">信噪比 SINR</td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 8px; justify-content: flex-end;">
+                        <span id="txt-sinr" style="font-size: 12px; font-weight: 600;">--</span>
+                        <div style="width: 120px; height: 10px; background: var(--bg); border-radius: 5px; overflow: hidden;">
+                            <div id="bar-sinr" style="width: 0%; height: 100%; background: linear-gradient(to right, #ffec3d, #52c41a); transition: width 0.5s;"></div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>签约下载速率</td>
+                <td id="det-qos-dl" style="font-weight: bold;">-- Mbps</td>
+            </tr>
+            <tr>
+                <td>签约上传速率</td>
+                <td id="det-qos-ul" style="font-weight: bold;">-- Mbps</td>
+            </tr>
+            <tr>
+                <td>QCI 优先级</td>
+                <td id="det-qci">--</td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<style>
+.help-icon {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    background: var(--primary);
+    color: #fff;
+    border-radius: 50%;
+    font-size: 10px;
+    text-align: center;
+    line-height: 14px;
+    cursor: pointer;
+    margin-left: 4px;
+    vertical-align: middle;
+    opacity: 0.7;
+}
+.help-icon:hover { opacity: 1; }
+</style>
+
+<div class="card">
+    <div class="card-header">
+        <h3>📶 已连接设备</h3>
+        <span id="device-count-badge" class="badge">0 台设备</span>
+    </div>
+    <div class="card-body">
+        <table class="info-table" style="text-align: left;">
+            <thead>
+                <tr style="color: var(--text-sub); font-size: 11px; border-bottom: 1px solid var(--border-color);">
+                    <th style="padding: 10px 0;">设备信息</th>
+                    <th style="padding: 10px 0;">IP 地址</th>
+                    <th style="padding: 10px 0; text-align: right;">操作</th>
+                </tr>
+            </thead>
+            <tbody id="device-list-body">
+                <tr><td colspan="3" style="text-align:center; padding: 20px; color: #999;">正在获取设备列表...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 黑名单管理 -->
+<div class="card">
+    <div class="card-header">
+        <h3>🚫 黑名单设备</h3>
+        <span id="blacklist-count-badge" class="badge" style="background: rgba(255, 77, 79, 0.1); color: #ff4d4f; border-color: #ffa39e;">0 台</span>
+    </div>
+    <div class="card-body">
+        <table class="info-table" style="text-align: left;">
+            <thead>
+                <tr style="color: var(--text-sub); font-size: 11px; border-bottom: 1px solid var(--border-color);">
+                    <th style="padding: 10px 0;">设备名称</th>
+                    <th style="padding: 10px 0;">MAC 地址</th>
+                    <th style="padding: 10px 0; text-align: right;">操作</th>
+                </tr>
+            </thead>
+            <tbody id="blacklist-body">
+                <tr><td colspan="3" style="text-align:center; padding: 20px; color: #999;">无黑名单记录</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>

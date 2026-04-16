@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - BridgeLink</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script>
+        // 主题初始化
+        (function() {
+            const theme = localStorage.getItem('theme') || 'auto';
+            if (theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: var(--bg);
+            overflow: hidden;
+            transition: background-color 0.3s;
+        }
+        .login-box {
+            width: 100%;
+            max-width: 380px;
+            padding: 40px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+            text-align: center;
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+        .login-box .logo {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 16px;
+            font-size: 28px;
+        }
+        .login-box h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+            color: var(--text-main);
+        }
+        .login-box p {
+            color: var(--text-sub);
+            margin-bottom: 32px;
+        }
+        .input-group {
+            text-align: left;
+            margin-bottom: 24px;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-main);
+        }
+        .input-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            outline: none;
+            transition: all 0.3s;
+            background: var(--bg);
+            color: var(--text-main);
+        }
+        .input-group input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(24,144,255,0.1);
+        }
+        .btn-theme-login {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            border: none;
+            background: var(--bg);
+            color: var(--text-main);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border-color);
+        }
+        #error-msg {
+            margin-top: 16px;
+            color: var(--danger);
+            font-size: 14px;
+            min-height: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <button id="theme-btn" class="btn-theme-login" title="切换主题">🌓</button>
+        <div class="logo" style="background: var(--primary); color: #fff; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold;">B</div>
+        <h1>BridgeLink</h1>
+        <p>随身 WiFi 高性能管理面板</p>
+        
+        <form id="login-form">
+            <div class="input-group">
+                <label>设备密码</label>
+                <input type="password" id="password" placeholder="请输入原厂管理密码" required>
+            </div>
+            <button type="submit" id="submit-btn" class="btn-primary" style="width: 100%; height: 48px; font-size: 16px;">进入面板</button>
+            <div id="error-msg"></div>
+        </div>
+    </div>
+
+    <!-- 全局自定义选择器 (Picker) - 登录页也需要 -->
+    <div id="custom-picker" class="modal-overlay" onclick="if(event.target == this) this.style.display='none'">
+        <div class="modal-container picker-container" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 id="picker-title">请选择</h3>
+            </div>
+            <div class="modal-body picker-list" id="picker-list" style="padding: 0;"></div>
+            <div class="modal-footer">
+                <button onclick="document.getElementById('custom-picker').style.display='none'" class="btn-secondary" style="width: 100%;">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/crypto-js.min.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+        // 登录页专用主题切换逻辑
+        const ApiExtra = {
+            showPicker: function(title, options, currentVal, callback) {
+                const picker = document.getElementById('custom-picker');
+                const list = document.getElementById('picker-list');
+                document.getElementById('picker-title').textContent = title;
+                list.innerHTML = options.map(opt => `
+                    <div class="picker-item ${opt.value == currentVal ? 'selected' : ''}" onclick="ApiExtra.handlePick('${opt.value}', '${opt.label}')">
+                        ${opt.label}
+                    </div>
+                `).join('');
+                this.currentCallback = callback;
+                picker.style.display = 'flex';
+            },
+            handlePick: function(val, label) {
+                document.getElementById('custom-picker').style.display = 'none';
+                if (this.currentCallback) this.currentCallback(val, label);
+            }
+        };
+
+        function setTheme(theme) {
+            localStorage.setItem('theme', theme);
+            if (theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+            }
+        }
+
+        document.getElementById('theme-btn').onclick = () => {
+            const current = localStorage.getItem('theme') || 'auto';
+            const options = [
+                { label: '浅色模式', value: 'light' },
+                { label: '深色模式', value: 'dark' },
+                { label: '跟随系统', value: 'auto' }
+            ];
+            ApiExtra.showPicker('切换主题', options, current, (val) => setTheme(val));
+        };
+    </script>
+    <script src="js/login.js"></script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+<div class="page-header">
+    <h2>局域网配置</h2>
+    <p>管理内网地址分配与 DHCP 服务状态</p>
+</div>
+
+<div class="card">
+    <div class="card-header"><h3>🏠 DHCP 设置</h3></div>
+    <div class="card-body">
+        <div class="form-group">
+            <label>IPv4 地址 <span class="required">*</span></label>
+            <input type="text" id="lan-ip-input" class="modern-input" placeholder="192.168.0.1">
+            <p class="input-desc">路由器局域网的IP地址，使用该IP地址可以通过浏览器管理设备。</p>
+        </div>
+        <div class="form-group">
+            <label>子网掩码 <span class="required">*</span></label>
+            <input type="text" id="lan-mask-input" class="modern-input" placeholder="255.255.255.0">
+        </div>
+        <div class="form-group flex-between">
+            <label>DHCP服务状态</label>
+            <label class="ios-switch">
+                <input type="checkbox" id="dhcp-server-switch" checked>
+                <span class="ios-slider"></span>
+            </label>
+        </div>
+        <div id="dhcp-config-section">
+            <div class="form-group">
+                <label>动态地址池 <span class="required">*</span></label>
+                <!-- 优化：增加 flex-wrap 并确保 input 不溢出 -->
+                <div class="ip-range-group" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <input type="text" id="dhcp-start-ip" placeholder="192.168.0.2" style="flex: 1; min-width: 120px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+                    <span style="color: #999;">-</span>
+                    <input type="text" id="dhcp-end-ip" placeholder="192.168.0.253" style="flex: 1; min-width: 120px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>DHCP租期 <span class="required">*</span></label>
+                <div class="unit-input-wrapper" style="display: flex; align-items: center;">
+                    <input type="number" id="dhcp-lease-input" value="24" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px 0 0 4px;">
+                    <span class="unit-tag" style="background: #f5f5f5; border: 1px solid #ddd; border-left: none; padding: 8px 12px; border-radius: 0 4px 4px 0; font-size: 13px; color: #666;">小时</span>
+                </div>
+            </div>
+        </div>
+        <div style="margin-top: 25px;">
+            <button class="btn-primary" id="apply-lan-settings" style="width: 100%; height: 45px;">保存并应用</button>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-top: 20px;">
+    <div class="card-header"><h3>⚙️ MTU 设置</h3></div>
+    <div class="card-body">
+        <div class="form-group">
+            <label>MTU 大小 <span class="required">*</span></label>
+            <input type="number" id="mtu-input" class="modern-input" placeholder="1500">
+            <p class="input-desc">MTU大小与运营商的网络设置有关。除非您非常熟悉网络参数，否则不建议对其进行修改。</p>
+        </div>
+        <div class="form-group">
+            <label>TCP MSS <span class="required">*</span></label>
+            <input type="number" id="mss-input" class="modern-input" placeholder="1460">
+        </div>
+        <div style="margin-top: 20px;">
+            <button class="btn-primary" id="apply-mtu-settings" style="width: 100%; height: 45px;">保存 MTU 设置</button>
+        </div>
+    </div>
+</div>

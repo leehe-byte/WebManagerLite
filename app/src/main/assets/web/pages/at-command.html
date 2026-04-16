@@ -1,0 +1,51 @@
+<div class="page-header">
+    <h2>AT 指令终端</h2>
+    <p>直接与调制解调器进行底层通信</p>
+</div>
+
+<!-- 风险警告 -->
+<div class="card" style="background: #fffbe6; border: 1px solid #ffe58f;">
+    <div style="display: flex; gap: 12px; align-items: flex-start;">
+        <span style="font-size: 20px;">⚠️</span>
+        <div>
+            <h4 style="color: #856404; margin-bottom: 4px;">风险提示</h4>
+            <p style="font-size: 13px; color: #856404; line-height: 1.5;">
+                下发非正确的 AT 指令可能导致调制解调器挂起、SIM 卡锁定或网络连接中断。除非您完全了解该指令的作用，否则请勿随意执行。
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>发送指令</h3>
+    </div>
+    <div class="card-body">
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <div style="flex: 1; position: relative;">
+                <input type="text" id="at-input" class="modern-input" placeholder="例如: AT+CSQ" style="margin-top: 0; padding-right: 40px; font-family: monospace; font-weight: bold; text-transform: uppercase;">
+            </div>
+            <button id="at-exec-btn" class="btn-primary" onclick="AtCommandModule.execute()" style="height: 38px; padding: 0 20px; white-space: nowrap;">执行</button>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <label style="font-size: 12px; color: var(--text-sub);">执行结果</label>
+            <div id="at-result-area" style="margin-top: 8px; background: #1a1a1a; border-radius: 6px; padding: 15px; min-height: 120px; color: #00ff00; font-family: 'Courier New', Courier, monospace; font-size: 13px; line-height: 1.6; white-space: pre-wrap; overflow-y: auto;">等待输入指令...</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>常用指令参考</h3>
+    </div>
+    <div class="card-body">
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <button class="badge" onclick="AtCommandModule.fill('AT+CSQ')" style="border: none; cursor: pointer;">信号质量 (CSQ)</button>
+            <button class="badge" onclick="AtCommandModule.fill('AT+CGSN')" style="border: none; cursor: pointer;">查询 IMEI</button>
+            <button class="badge" onclick="AtCommandModule.fill('AT+CGMM')" style="border: none; cursor: pointer;">查询型号</button>
+            <button class="badge" onclick="AtCommandModule.fill('AT+CPIN?')" style="border: none; cursor: pointer;">SIM卡状态</button>
+            <button class="badge" onclick="AtCommandModule.fill('AT+CGEQOSRDP=1')" style="border: none; cursor: pointer;">签约速率</button>
+        </div>
+    </div>
+</div>

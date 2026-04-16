@@ -1,0 +1,134 @@
+<!-- C:/Users/he/AndroidStudioProjects/WebManagerLite/app/src/main/assets/web/pages/overview.html -->
+<div class="card-grid">
+    <!-- A. 系统详情 -->
+    <div class="card">
+        <div class="card-header"><h3>系统详情</h3></div>
+        <div class="card-body">
+            <table class="info-table">
+                <tr><td>主机名称</td><td id="sys-hostname">--</td></tr>
+                <tr><td>设备型号</td><td id="sys-model">--</td></tr>
+                <tr><td>内核版本</td><td id="sys-kernel">--</td></tr>
+                <tr><td>硬件版本</td><td id="hw-version">--</td></tr>
+                <tr><td>软件版本</td><td id="sw-version">--</td></tr>
+                <tr><td>电池状态</td>
+                    <td>
+                        <div style="display: flex; align-items: center; justify-content: flex-end; gap: 6px;">
+                            <span id="bat-temp" style="font-size: 11px; color: #fa8c16;"></span>
+                            <span id="bat-val">--%</span>
+                            <div style="position: relative; width: 30px; height: 14px; display: flex; align-items: center; justify-content: center;">
+                                <div class="battery-body-small" style="margin: 0; position: absolute; width: 100%; height: 100%;">
+                                    <div id="bat-fill" class="battery-level" style="width: 0%;"></div>
+                                </div>
+                                <!-- 闪电图标：确保在 z-index 顶层并居中 -->
+                                <div id="bat-charging-mark" style="position: absolute; color: #fff; font-size: 10px; font-weight: bold; text-shadow: 0 0 2px #000; z-index: 5; display: none;">⚡</div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                <tr><td>未读短信</td><td><span id="sms-unread" class="badge" style="background:#ff4d4f; color:#fff; display:none;">0</span><span id="sms-text">无未读</span></td></tr>
+                <tr><td>运行时间</td><td id="sys-uptime">--</td></tr>
+            </table>
+            <div class="card-header"><h3>核心负载</h3></div>
+            <div class="card-body">
+                <div class="usage-group"><div class="usage-info"><span>CPU</span><span id="cpu-text">0%</span></div><div class="progress-bg"><div id="cpu-bar" class="progress-val"></div></div></div>
+                <div class="usage-group"><div class="usage-info"><span>内存 (<span id="mem-detail">--</span>)</span><span id="memory-text">0%</span></div><div class="progress-bg"><div id="memory-bar" class="progress-val"></div></div></div>
+                <div class="usage-group"><div class="usage-info"><span>存储 (<span id="storage-detail">--</span>)</span><span id="storage-text">0%</span></div><div class="progress-bg"><div id="storage-bar" class="progress-val" style="background: var(--warning)"></div></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- B. 网络摘要 -->
+    <div class="card">
+        <div class="card-header">
+            <h3>网络摘要</h3>
+            <span id="net-type-badge" class="badge">--</span>
+        </div>
+        <div class="card-body">
+            <div class="operator-line">
+                <div class="op-brand">
+                    <img id="operator-logo" src="img/unknown.png" class="op-icon-small">
+                    <h2 id="operator">正在读取...</h2>
+                </div>
+                <div class="op-signal">
+                    <span id="dbm-value" style="font-size: 13px; color: #8c8c8c; margin-right: 8px;">-- dBm</span>
+                    <div id="signal-bars" class="signal-bars-row">
+                        <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                    </div>
+                </div>
+            </div>
+            <p id="c-status" style="font-size: 12px; color: #8c8c8c; margin-bottom: 15px;">检测中</p>
+
+            <table class="info-table">
+                <tr><td>使用的卡槽</td><td id="sim-badge" style="color:var(--primary);font-weight:bold">--</td></tr>
+                <tr><td>漫游状态</td><td id="roam-status">--</td></tr>
+                <tr>
+                    <td>IPv4 地址</td>
+                    <td>
+                        <div class="value-box" style="padding: 2px 0; display: flex; align-items: center; gap: 6px; justify-content: flex-end; width: 100%; flex-wrap: wrap;">
+                            <span class="masked-value" data-target="wan-ip" style="word-break: break-all; text-align: right;">***********</span>
+                            <i class="eye-toggle" onclick="toggleVisibility('wan-ip')" style="cursor: pointer; font-style: normal; flex-shrink: 0;">🔒</i>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>IPv6 地址</td>
+                    <td>
+                        <div class="value-box" style="padding: 2px 0; display: flex; align-items: center; gap: 6px; justify-content: flex-end; width: 100%; flex-wrap: wrap;">
+                            <span class="masked-value" data-target="wan-ipv6" style="word-break: break-all; text-align: right; font-size: 12px;">***********</span>
+                            <i class="eye-toggle" onclick="toggleVisibility('wan-ipv6')" style="cursor: pointer; font-style: normal; flex-shrink: 0;">🔒</i>
+                        </div>
+                    </td>
+                </tr>
+                <tr><td>下载网速</td><td id="down-speed">0 B/s</td></tr>
+                <tr><td>上传网速</td><td id="up-speed">0 B/s</td></tr>
+                <tr><td>本月下载</td><td id="monthly-rx">0.00 MB</td></tr>
+                <tr><td>本月上传</td><td id="monthly-tx">0.00 MB</td></tr>
+                <tr><td>本月总量</td><td><strong id="monthly-usage" style="color:var(--primary)">0.00 MB</strong></td></tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- C. 身份标识 -->
+    <div class="card identity-card">
+        <div class="card-header"><h3>身份标识</h3></div>
+        <div class="card-body">
+            <div class="identity-item"><label>IMEI</label><div class="value-box"><span class="masked-value" data-target="imei">***********</span><i class="eye-toggle" onclick="toggleVisibility('imei')">🔒</i></div></div>
+            <div class="identity-item"><label>IMSI</label><div class="value-box"><span class="masked-value" data-target="imsi">***********</span><i class="eye-toggle" onclick="toggleVisibility('imsi')">🔒</i></div></div>
+            <div class="identity-item"><label>ICCID</label><div class="value-box"><span class="masked-value" data-target="iccid">***********</span><i class="eye-toggle" onclick="toggleVisibility('iccid')">🔒</i></div></div>
+            <div class="identity-item">
+                <label>进网许可</label>
+                <div style="text-align: center; margin-top: 10px; padding-bottom: 25px;">
+                    <img src="/api/proxy/img/ic_license.png" style="width: 176px; display: block; margin: 0 auto;">
+                    <div class="acces-licaense-modelname" id="license-model-name" style="top: -46px; font-size: 19px;">--</div>
+                    <div class="acces-licaense-id" id="license-electron-id" style="top: -38px; font-size: 14px;">--</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- E. WiFi 预览 (含二维码) -->
+    <div class="card">
+        <div class="card-header">
+            <h3>WiFi 状态</h3>
+            <span id="wifi-station-count" class="badge">--</span>
+        </div>
+        <div class="card-body">
+            <table class="info-table">
+                <tr><td>当前 SSID</td><td id="sys-wifi-ssid" style="font-weight:bold; color:var(--primary)">--</td></tr>
+                <tr><td>无线密码</td>
+                    <td>
+                        <div class="value-box" style="padding: 2px 0; display: flex; align-items: center; gap: 6px; justify-content: flex-end; width: 100%; flex-wrap: wrap;">
+                            <span class="masked-value" data-target="wifi-pass" style="word-break: break-all; text-align: right; font-family: monospace;">***********</span>
+                            <i class="eye-toggle" onclick="toggleVisibility('wifi-pass')" style="cursor: pointer; font-style: normal; flex-shrink: 0;">🔒</i>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+            <!-- 二维码展示区 -->
+            <div id="sys-wifi-qr-section" style="text-align: center; margin-top: 15px; display: none; padding-top: 15px; border-top: 1px dashed #eee;">
+                <img id="sys-wifi-qr-img" style="width: 130px; height: 130px; background: #fff; padding: 8px; border: 1px solid #eee; border-radius: 8px;">
+                <p style="font-size: 11px; color: #8c8c8c; margin-top: 8px;">扫码快速连接 WiFi</p>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,110 @@
+<div class="page-header">
+    <h2>电源与硬件管理</h2>
+    <p>管理设备的运行状态、指示灯及自动化计划</p>
+</div>
+
+<!-- 续航统计 (仅在有数据时显示) -->
+<div id="battery-stats-card" class="card" style="display: none; background: linear-gradient(135deg, #1d2b64 0%, #7db9e8 100%); border: none;">
+    <div class="card-header" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+        <h3 style="color: #fff;">🔋 续航历史统计</h3>
+    </div>
+    <div class="card-body">
+        <div id="latest-stats" style="text-align: center; padding: 10px 0;">
+            <div style="font-size: 12px; color: rgba(255,255,255,0.7);">最近一次 (100% → 20%)</div>
+            <div id="latest-duration" style="font-size: 32px; font-weight: bold; color: #fff; margin: 5px 0;">--</div>
+        </div>
+        <div id="history-list" style="margin-top: 15px; border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 10px;">
+            <!-- 历史列表 -->
+        </div>
+    </div>
+</div>
+
+<!-- 核心硬件控制 -->
+<div class="card">
+    <div class="card-header">
+        <h3>🛠️ 硬件控制</h3>
+    </div>
+    <div class="card-body">
+        <div class="info-table">
+            <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+                <button class="btn-primary" onclick="PowerModule.action('REBOOT_DEVICE')" style="flex: 1; height: 48px; border-radius: 8px; background: linear-gradient(135deg, #1890ff 0%, #0050b3 100%); border: none;">
+                    🔄 立即重启
+                </button>
+                <button class="btn-logout" onclick="PowerModule.action('SHUTDOWN_DEVICE')" style="flex: 1; height: 48px; border-radius: 8px; background: linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%); color: #fff; border: none;">
+                    🔌 立即关机
+                </button>
+            </div>
+
+            <!-- 指示灯开关 -->
+            <div class="flex-between" style="padding: 12px 0; border-top: 1px solid var(--border-color);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 20px;">💡</span>
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="font-size: 14px; font-weight: 500;">状态指示灯</span>
+                        <span id="light-status-text" style="font-size: 11px; color: var(--text-sub);">正在同步...</span>
+                    </div>
+                </div>
+                <div class="ios-switch">
+                    <input type="checkbox" id="light-switch" onchange="PowerModule.toggleLight()">
+                    <label for="light-switch" class="ios-slider"></label>
+                </div>
+            </div>
+
+            <!-- 设备自动休眠 -->
+            <div style="margin-top: 10px; background: var(--inner-bg); padding: 2px 10px; border-radius: 8px; text-align: right; border: 1px solid var(--border-color); display: none;">
+                <div style="padding: 8px 0 2px 0;">
+                    <div class="flex-between">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span style="font-size: 20px;">💤</span>
+                            <div style="display: flex; flex-direction: column; text-align: left;">
+                                <span style="font-size: 14px; font-weight: 500;">自动休眠</span>
+                                <span style="font-size: 11px; color: var(--text-sub);">无设备连接时自动关闭 WiFi</span>
+                            </div>
+                        </div>
+                        <div id="sleep-picker-btn" class="modern-input picker-trigger" style="width: auto; margin-top: 0; padding: 4px 32px 4px 8px; font-size: 12px; cursor: pointer; text-align: left;" onclick="PowerModule.showSleepPicker()">
+                            正在获取...
+                        </div>
+                    </div>
+                    <button class="badge" onclick="PowerModule.applySleepSetting()" style="background: var(--primary); color: #fff; border: none; padding: 5px 15px; cursor: pointer; font-weight: normal; margin-top: 12px; margin-bottom: 4px;">应用更改</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 定时重启配置 -->
+<div class="card">
+    <div class="card-header">
+        <h3>⏰ 定时重启计划</h3>
+        <div class="ios-switch">
+            <input type="checkbox" id="reboot-enable" onchange="PowerModule.toggleUI()">
+            <label for="reboot-enable" class="ios-slider"></label>
+        </div>
+    </div>
+    <div id="reboot-config-form" class="card-body" style="display: none; border-top: 1px solid var(--border-color); padding-top: 15px;">
+        <div class="form-group">
+            <label>重启规则</label>
+            <div id="reboot-mode-picker" class="modern-input picker-trigger" style="cursor: pointer;" onclick="PowerModule.showModePicker()">
+                正在获取...
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label id="reboot-interval-label">间隔设置</label>
+            <div id="reboot-val-picker" class="modern-input picker-trigger" style="cursor: pointer;" onclick="PowerModule.showValPicker()">
+                正在获取...
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>重启时间段</label>
+            <div id="reboot-time-picker" class="modern-input picker-trigger" style="cursor: pointer;" onclick="PowerModule.showTimePicker()">
+                正在获取...
+            </div>
+        </div>
+
+        <div style="margin-top: 25px;">
+            <button class="btn-primary" onclick="PowerModule.saveSettings()" style="width: 100%; height: 45px; border-radius: 8px;">保存计划</button>
+        </div>
+    </div>
+</div>

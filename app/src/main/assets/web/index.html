@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BridgeLink Manager</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script>
+        // 主题初始化
+        (function() {
+            const theme = localStorage.getItem('theme') || 'auto';
+            if (theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+
+        const isAndroidApp = navigator.userAgent.indexOf('OpenWrtLiteManager') > -1 || !!window.AndroidBridge;
+        if (isAndroidApp) {
+            sessionStorage.setItem('isLoggedIn', 'true');
+        } else if (sessionStorage.getItem('isLoggedIn') !== 'true') {
+            window.location.href = 'login.html';
+        }
+    </script>
+</head>
+<body>
+<header id="header">
+    <div class="header-container">
+        <div class="brand">
+            <div id="menu-toggle">☰</div>
+            <span class="logo">B</span>
+            <span class="name">BridgeLink <span>Manager</span></span>
+        </div>
+        <div class="top-status">
+            <button id="theme-btn" class="btn-theme" title="切换主题">🌓</button>
+            <span id="system-info" class="status-badge">在线</span>
+            <button id="logout-btn" class="btn-logout">退出</button>
+        </div>
+    </div>
+</header>
+
+<div class="main-wrapper">
+    <div id="sidebar-overlay"></div>
+    <aside id="sidebar">
+        <nav class="nav-menu">
+            <!-- 1. 状态 -->
+            <div class="nav-section">状态</div>
+            <a href="javascript:void(0)" class="nav-item active" data-page="overview"><p>📊</p> 状态总览</a>
+            
+            <!-- 2. 网络 -->
+            <div class="nav-section collapsible" onclick="this.classList.toggle('closed')">
+                网络配置 <span class="toggle-icon"></span>
+            </div>
+            <div class="section-content">
+                <a href="javascript:void(0)" class="nav-item" data-page="lan"><p>🏠</p> 局域网设置</a>
+                <a href="javascript:void(0)" class="nav-item" data-page="net-info"><p>ℹ️</p> 网络详情</a>
+                <a href="javascript:void(0)" class="nav-item" data-page="wifi"><p>📡</p> 无线配置</a>
+                <a href="javascript:void(0)" class="nav-item" data-page="net-debug"><p>🩺</p> 网络调试</a>
+            </div>
+
+            <!-- 3. 高级 -->
+            <div class="nav-section collapsible closed" onclick="this.classList.toggle('closed')">
+                应用服务 <span class="toggle-icon"></span>
+            </div>
+            <div class="section-content">
+                <a href="javascript:void(0)" class="nav-item" data-page="mihomo"><p>🛡️</p> 代理状态</a>
+                <a href="javascript:void(0)" class="nav-item" data-page="samba"><p>📂</p> Samba 共享</a>
+            </div>
+            
+            <!-- 4. 系统 -->
+            <div class="nav-section collapsible closed" onclick="this.classList.toggle('closed')">
+                系统管理 <span class="toggle-icon"></span>
+            </div>
+            <div class="section-content">
+                <a href="javascript:void(0)" class="nav-item" data-page="remote"><p>📱</p> 远程控制</a>
+                <a href="javascript:void(0)" class="nav-item" data-page="at-command"><p>⚙️</p> AT 指令</a>
+                <a href="javascript:void(0)" class="nav-item" data-page="terminal"><p>💻</p> Web 终端</a>
+                <a href="javascript:void(0)" class="nav-item" data-page="power"><p>⚡</p> 电源管理</a>
+                <a href="javascript:void(0)" class="nav-item" data-page="adb"><p>🐛</p> ADB 调试</a>
+            </div>
+            
+            <!-- 5. 通信 -->
+            <div class="nav-section">通信</div>
+            <a href="javascript:void(0)" class="nav-item" data-page="sms"><p>✉️</p> 短信列表</a>
+
+            <div class="nav-section">关于</div>
+            <a href="javascript:void(0)" class="nav-item" data-page="about"><p>💡</p> 关于本项目</a>
+        </nav>
+    </aside>
+
+    <main id="content"></main>
+</div>
+
+<!-- 全局自定义提示/确认弹窗 -->
+<div id="custom-modal" class="modal-overlay">
+    <div class="modal-container">
+        <div class="modal-header"><h3 id="modal-title">提示</h3></div>
+        <div class="modal-body" id="modal-content"></div>
+        <div class="modal-footer">
+            <button id="modal-cancel" class="btn-secondary">取消</button>
+            <button id="modal-confirm" class="btn-primary">确定</button>
+        </div>
+    </div>
+</div>
+
+<!-- 全局自定义选择器 (Picker) - 增加点击外部关闭 -->
+<div id="custom-picker" class="modal-overlay" onclick="if(event.target == this) this.classList.remove('active')">
+    <div class="modal-container picker-container" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h3 id="picker-title">请选择</h3>
+        </div>
+        <div class="modal-body picker-list" id="picker-list" style="padding: 0;">
+            <!-- 选项 -->
+        </div>
+        <div class="modal-footer">
+            <button onclick="document.getElementById('custom-picker').classList.remove('active')" class="btn-secondary" style="width: 100%;">取消</button>
+        </div>
+    </div>
+</div>
+
+<script src="js/crypto-js.min.js"></script>
+<script src="js/api.js"></script>
+<script src="js/lan.js"></script>
+<script src="js/wifi.js"></script>
+<script src="js/mihomo.js"></script>
+<script src="js/adb.js"></script>
+<script src="js/terminal.js"></script>
+<script src="js/sms.js"></script>
+<script src="js/at-command.js"></script>
+<script src="js/remote.js"></script>
+<script src="js/power.js"></script>
+<script src="js/samba.js"></script>
+<script src="js/script.js"></script>
+</body>
+</html>

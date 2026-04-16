@@ -1,0 +1,42 @@
+<div class="card">
+    <div class="card-header">
+        <h3>🐛 ADB 网络调试</h3>
+        <span id="adb-status-badge" class="status-badge" style="background: #eee; border-color: #ccc; color: #888;">检测中...</span>
+    </div>
+    <div class="info-table">
+        <div class="operator-line">
+            <div class="op-brand">
+                <h2 id="adb-status-text">正在获取状态...</h2>
+            </div>
+            <div class="ios-switch">
+                <input type="checkbox" id="adb-toggle">
+                <label for="adb-toggle" class="ios-slider"></label>
+            </div>
+        </div>
+        <div id="adb-address-box" class="value-box" style="margin-top: 15px; display: none;">
+            <div style="flex: 1;">
+                <label style="font-size: 11px; color: var(--text-sub);">连接命令</label>
+                <div id="adb-connect-cmd" class="masked-value" style="color: var(--primary); font-weight: bold;">adb connect ...</div>
+            </div>
+            <button onclick="AdbModule.copyCmd()" class="badge" style="cursor: pointer; border: none;">复制</button>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>📝 脚本输出</h3>
+    </div>
+    <pre id="adb-output-area" class="log-area" style="height: 150px; background: #000; color: #00ff00; font-size: 12px; padding: 10px;"></pre>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>ℹ️ 说明</h3>
+    </div>
+    <div style="font-size: 13px; color: #666; line-height: 1.6;">
+        <p>1. 开启网络 ADB 后，您可以通过 Wi-Fi 调试应用或执行 shell 命令。</p>
+        <p>2. 默认端口为 <b>5555</b>。</p>
+        <p>3. 如果连接失败，请确保电脑与手机在同一局域网内。</p>
+    </div>
+</div>

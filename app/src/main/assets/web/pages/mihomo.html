@@ -1,0 +1,72 @@
+<div class="card-grid">
+    <!-- 核心控制卡片 -->
+    <div class="card">
+        <div class="card-header">
+            <h3>🛡️ Mihomo 核心控制</h3>
+            <span id="mi-status-badge" class="status-badge" style="background: #eee; border-color: #ccc; color: #888;">检测中...</span>
+        </div>
+        <div class="info-table">
+            <!-- 运行状态开关 -->
+            <div class="operator-line" style="margin-bottom: 20px;">
+                <div class="op-brand">
+                    <h2 id="mi-running-text" style="font-size: 16px;">内核未运行</h2>
+                </div>
+                <div class="ios-switch">
+                    <input type="checkbox" id="mi-toggle">
+                    <label for="mi-toggle" class="ios-slider"></label>
+                </div>
+            </div>
+            
+            <!-- 开机自启开关 (新增) -->
+            <div class="flex-between" style="padding: 10px 0; border-top: 1px solid #f5f5f5;">
+                <div>
+                    <label style="font-size: 14px; font-weight: 500;">开机自动启动</label>
+                    <div class="input-desc">系统重启后自动运行内核</div>
+                </div>
+                <div class="ios-switch">
+                    <input type="checkbox" id="mi-boot-toggle" onchange="MihomoModule.toggleBoot(this.checked)">
+                    <label for="mi-boot-toggle" class="ios-slider"></label>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button onclick="MihomoModule.action('restart')" class="btn-secondary" style="flex:1; font-size: 12px;">重启内核</button>
+                <button onclick="MihomoModule.openDashboard()" class="btn-primary" style="flex:1; font-size: 12px;">控制面板</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 配置信息卡片 -->
+    <div class="card">
+        <div class="card-header">
+            <h3>⚙️ 基础配置 (YAML)</h3>
+        </div>
+        <table class="info-table">
+            <tr><td>运行模式</td><td id="mi-mode">--</td></tr>
+            <tr><td>混合端口</td><td id="mi-port">--</td></tr>
+            <tr><td>控制地址</td><td id="mi-controller">--</td></tr>
+            <tr><td>TUN 设备</td><td id="mi-tun" style="color:var(--primary); font-weight:bold;">--</td></tr>
+        </table>
+        <div style="margin-top: 15px; display: flex; gap: 10px;">
+            <button onclick="MihomoModule.loadLog()" class="badge" style="flex:1; border:none; cursor:pointer; padding: 8px;">刷新日志</button>
+            <button onclick="MihomoModule.action('stop')" class="badge" style="flex:1; border:none; cursor:pointer; background:#fff1f0; color:#f5222d;">强制停止</button>
+        </div>
+    </div>
+</div>
+
+<!-- 日志显示区 -->
+<div class="card">
+    <div class="card-header">
+        <h3>📋 系统日志 (/sdcard/mihomo.log)</h3>
+    </div>
+    <pre id="mi-log-area" class="log-area" style="height: 250px; background: #000; color: #00ff00; font-size: 11px; overflow-y: auto; padding: 10px; border-radius: 4px;"></pre>
+</div>
+
+<!-- WebUI 嵌套 -->
+<div id="mi-dashboard-wrap" class="card" style="display: none; padding: 0; overflow: hidden; border: 2px solid var(--primary);">
+    <div class="card-header" style="padding: 10px 15px; background: #fafafa;">
+        <h3>📊 外部控制面板</h3>
+        <button onclick="document.getElementById('mi-dashboard-wrap').style.display='none'" class="btn-logout" style="padding: 2px 8px;">关闭面板</button>
+    </div>
+    <iframe id="mi-iframe" src="" style="width: 100%; height: 650px; border: none;"></iframe>
+</div>

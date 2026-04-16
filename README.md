@@ -2,6 +2,7 @@
 
 一个运行在某品牌安卓随身WiFi系统上的轻量级的替代网关管理工具。本项目旨在彻底替换某品牌随身 WiFi 原厂极其简陋且受限的 Web 管理页面，提供现代化的远程控制与高级网络管理体验。
 
+[OpenGW-mobile](https://github.com/leehe-byte/WebManagerLite-mobile)还有远程免登录管理版本，可切换官方与自用web
 > **🚀 特别声明**：本项目的所有核心逻辑、投屏引擎及代码架构均由 **Google Gemini** 全力驱动生成。
 
 ---

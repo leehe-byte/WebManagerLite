@@ -75,6 +75,7 @@ jobs:
             ## 🚀 OpenGW (WebManagerLite) ${{ env.VERSION }}
             
             本次更新摘要：
+            - 初步适配F50
             - 全量适配黑暗模式
             - 新增 Samba 共享与 NFC 控制
             - 优化手机端布局

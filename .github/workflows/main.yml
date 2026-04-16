@@ -59,7 +59,7 @@ jobs:
           
           # 移动并重命名
           mkdir -p final_artifacts
-          cp app/build/outputs/apk/release/app-release.apk "final_artifacts/${OUTPUT_NAME}"
+          cp app/build/outputs/apk/release/*.apk "final_artifacts/${OUTPUT_NAME}"
           
           # 导出给后续步骤使用
           echo "FINAL_FILENAME=${OUTPUT_NAME}" >> $GITHUB_ENV

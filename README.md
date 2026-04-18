@@ -2,13 +2,13 @@
 
 一个运行在某品牌安卓随身WiFi系统上的轻量级的替代网关管理工具。本项目旨在彻底替换某品牌随身 WiFi 原厂极其简陋且受限的 Web 管理页面，提供现代化的远程控制与高级网络管理体验。
 
-[OpenGW-mobile](https://github.com/leehe-byte/WebManagerLite-mobile)还有远程免登录管理版本，可切换官方与自用web
-> **🚀 特别声明**：本项目的所有核心逻辑、投屏引擎及代码架构均由 **Google Gemini** 全力驱动生成。
+[OpenGW-mobile](https://github.com/leehe-byte/WebManagerLite-mobile)：远程免登录管理版本，可切换官方与自用web
+> **🚀 特别声明**：本项目的所有核心逻辑、代码架构均由 **Google Gemini** 全力驱动生成。
 
 ---
 
 ## 🌟 核心优势
-- **极速投屏**：支持 Web 远程控制，但是效果一般。
+- **极速投屏**：支持 Web 远程控制，但是效果一般，后续会优化。
 - **桥接协议**：深度劫持并重构原厂 GoForm 协议，解锁隐藏的网络参数与控制权限。
 - **极致 UI**：全站风格高度统一，全量适配**黑暗模式**，深度定制自定义选择器（Picker）、药丸式切换器及平滑过渡动画。
 - **极客工具**：集成 Mihomo 代理、ttyd 全功能终端、Samba 存储共享、自定义 AT 指令下发。
@@ -29,19 +29,20 @@
 - **5G/LTE 监控**：可视化 RSRP, RSSI, SINR, PCI 等参数。
 
 ### ⏳ 持续演进中 (Roadmap)
-- [ ] **网络调试**：集成 Ping、Traceroute、Iperf 等诊断工具。
+- [ ] **网络调试**：集成 Ping、Traceroute、Iperf3 等诊断工具。
 - [ ] **文件管理**：内置 Web 端文件浏览器，支持上传下载与解压。
 - [ ] **插件系统**：支持用户自定义 HTML/JS 扩展页面。
 
 ---
 
 ## 🤝 致谢
-特别感谢 [UFI-TOOLS](https://github.com/kanoqwq/UFI-TOOLS) 项目及其作者 **kanoqwq**。本项目深受其启发，并引用了其中 `sendat` 相关核心逻辑。
+特别感谢 [UFI-TOOLS](https://github.com/kanoqwq/UFI-TOOLS) 项目及其作者 **kanoqwq**。本项目深受其启发，并使用了其中 `sendat` 二进制文件。
+Webshell部分使用了tsl0922的[ttyd](https://github.com/tsl0922/ttyd.git)项目。
 
 ---
 
 ## 🛡️ 安装要求
-- **系统**：Android 5.0+ (建议 10.0+ 体验更佳)
+- **系统**：某兴u30air与f50可使用。
 - **权限**：必须具备 **Root 权限** (Magisk 或 KernelSU)。
 - **依赖**：请确保 `/system/bin/` 下存在 `mihomo`、`ttyd.aarch64`、`sendat` 等工具。
 

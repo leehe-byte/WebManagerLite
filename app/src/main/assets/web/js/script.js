@@ -144,15 +144,16 @@ function initPageLogic(pageId) {
 	} else if (pageId === 'about') {
 		AboutModule.init();
 	} else if (pageId === 'net-info') {
-		syncNetInfo();
-		activeTimer = setInterval(syncNetInfo, 3000);
-		setTimeout(() => {
-			bindNetCtrlEvents();
-			checkDualSimSupport();
-			fetchUsbStatus(); // 初始化 USB 状态
-			syncNfcStatus();  // 初始化 NFC 状态
-		}, 100);
-	}
+        syncNetInfo();
+        activeTimer = setInterval(syncNetInfo, 3000);
+        setTimeout(() => {
+            bindNetCtrlEvents();
+            checkDeviceModelForFeatures(); // 新增：检测设备型号并控制功能显示
+            checkDualSimSupport();
+            fetchUsbStatus();
+            syncNfcStatus();
+        }, 100);
+    }
 }
 
 // --- 信号强度帮助提示 ---
@@ -463,13 +464,46 @@ async function syncOverview() {
 }
 
 async function checkDualSimSupport() {
-	try {
-		const data = await Api.get('/api/proxy/goform/goform_get_cmd_process?isTest=false&cmd=dual_sim_support&_=' + Date.now());
-		if (data && data.dual_sim_support === "1") {
-			const container = document.getElementById('ctrl-sim-container');
-			if (container) container.style.display = 'flex';
-		}
-	} catch (e) {}
+    try {
+        // 先检测设备型号
+        const statusData = await Api.get('/api/status');
+        const isF50 = statusData && statusData.model === "F50";
+        
+        // F50 不显示 SIM 卡切换
+        if (isF50) {
+            const container = document.getElementById('ctrl-sim-container');
+            if (container) container.style.display = 'none';
+            return;
+        }
+        
+        // 非 F50 设备检查双卡支持
+        const data = await Api.get('/api/proxy/goform/goform_get_cmd_process?isTest=false&cmd=dual_sim_support&_=' + Date.now());
+        if (data && data.dual_sim_support === "1") {
+            const container = document.getElementById('ctrl-sim-container');
+            if (container) container.style.display = 'flex';
+        }
+    } catch (e) {}
+}
+
+async function checkDeviceModelForFeatures() {
+    try {
+        const data = await Api.get('/api/status');
+        const isF50 = data && data.model === "F50";
+        
+        // 控制 NFC 碰一碰显示
+        const nfcSection = document.getElementById('nfc-section');
+        if (nfcSection) {
+            nfcSection.style.display = isF50 ? 'none' : 'flex';
+        }
+        
+        // 控制自动休眠显示（在 power 页面）
+        const sleepSection = document.getElementById('sleep-section');
+        if (sleepSection) {
+            sleepSection.style.display = isF50 ? 'none' : 'block';
+        }
+    } catch (e) {
+        console.error("Check device model failed", e);
+    }
 }
 
 async function syncNetInfo() {

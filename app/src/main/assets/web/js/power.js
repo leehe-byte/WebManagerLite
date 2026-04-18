@@ -8,9 +8,24 @@ const PowerModule = {
 
     init: function() {
         console.log("PowerModule Initializing...");
+        this.checkDeviceModelAndHideFeatures(); // 新增
         this.syncStatus();
         this.fetchBatteryStats();
         this.fetchSleepStatus();
+    },
+
+    checkDeviceModelAndHideFeatures: async function() {
+        try {
+            const data = await Api.get('/api/status');
+            const isF50 = data && data.model === "F50";
+        
+            const sleepSection = document.getElementById('sleep-section');
+            if (sleepSection) {
+                sleepSection.style.display = isF50 ? 'none' : 'block';
+            }
+        } catch (e) {
+            console.error("Check device model in power module failed", e);
+        }
     },
 
     // --- 续航统计逻辑 ---

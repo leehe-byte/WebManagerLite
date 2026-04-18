@@ -51,7 +51,7 @@
             </div>
 
             <!-- 设备自动休眠 -->
-            <div style="margin-top: 10px; background: var(--inner-bg); padding: 2px 10px; border-radius: 8px; text-align: right; border: 1px solid var(--border-color); display: none;">
+            <div id="sleep-section" style="margin-top: 10px; background: var(--inner-bg); padding: 2px 10px; border-radius: 8px; text-align: right; border: 1px solid var(--border-color);">
                 <div style="padding: 8px 0 2px 0;">
                     <div class="flex-between">
                         <div style="display: flex; align-items: center; gap: 12px;">
@@ -62,7 +62,7 @@
                             </div>
                         </div>
                         <div id="sleep-picker-btn" class="modern-input picker-trigger" style="width: auto; margin-top: 0; padding: 4px 32px 4px 8px; font-size: 12px; cursor: pointer; text-align: left;" onclick="PowerModule.showSleepPicker()">
-                            正在获取...
+                正在获取...
                         </div>
                     </div>
                     <button class="badge" onclick="PowerModule.applySleepSetting()" style="background: var(--primary); color: #fff; border: none; padding: 5px 15px; cursor: pointer; font-weight: normal; margin-top: 12px; margin-bottom: 4px;">应用更改</button>

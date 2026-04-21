@@ -1,43 +1,57 @@
-<div class="card" style="padding: 15px; background: #1a1a1a; display: flex; flex-direction: column; align-items: center; gap: 0;">
-    <div class="card-header" style="width: 100%; border-bottom: 1px solid #333; margin-bottom: 15px;">
-        <h3 style="color: #ccc;">📱 远程桌面 (Turbo JPEG)</h3>
-        <span id="remote-status" class="status-badge" style="background: #222; border-color: #444; color: #888;">连接中...</span>
-    </div>
-    
-    <!-- 核心显示与控制区 -->
-    <div id="remote-device-mockup" style="position: relative; width: 100%; max-width: 320px; background: #000; border: 4px solid #333; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
-        
-        <!-- 屏幕显示区：回归 Canvas 渲染 -->
-        <div style="width: 100%; aspect-ratio: 480 / 848; position: relative; background: #000;">
-            <canvas id="screen-canvas" width="480" height="848" style="width: 100%; height: 100%; display: block; image-rendering: -webkit-optimize-contrast; cursor: crosshair;"></canvas>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>远程控制 - BridgeLink</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/remote.css">
+</head>
+<body class="embedded-page">
+    <div class="remote-container">
+        <div class="remote-header">
+            <h2>📱 远程控制 (高性能模式)</h2>
             
-            <div id="screen-loader" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.9); color: #52c41a; font-family: monospace; z-index: 10;">
-                正在唤醒 Turbo 引擎...
+            <div class="remote-toolbar">
+                <div class="remote-config" style="background: rgba(0,0,0,0.1); padding: 5px 10px; border-radius: 4px; font-family: monospace;">
+                    <span id="remote-target-info">...</span>
+                </div>
+                
+                <button id="remote-connect-btn" class="btn btn-primary">
+                    <span class="btn-text">连接</span>
+                </button>
+                <button id="remote-disconnect-btn" class="btn btn-danger" style="display: none;">
+                    断开
+                </button>
+            </div>
+            
+            <div class="remote-status">
+                <div class="remote-status-badge">
+                    <span id="remote-status-dot" class="remote-status-dot"></span>
+                    <span id="remote-status-text">未连接</span>
+                </div>
+                <span id="remote-fps" class="remote-fps">-- FPS</span>
             </div>
         </div>
-
-        <!-- 底部虚拟导航栏 -->
-        <div class="virtual-navbar" style="background: #111; height: 48px; border-top: 1px solid #222; display: flex; justify-content: space-around; align-items: center; padding: 0 20px;">
-            <div class="v-nav-btn" onclick="RemoteControlModule.sendKey('BACK')">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;"><polyline points="15 18 9 12 15 6"></polyline></svg>
-            </div>
-            <div class="v-nav-btn" onclick="RemoteControlModule.sendKey('HOME')">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;"><circle cx="12" cy="12" r="8"></circle></svg>
-            </div>
-            <div class="v-nav-btn" onclick="RemoteControlModule.sendKey('APP_SWITCH')">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>
+        
+        <div class="remote-video-wrapper" id="remote-video-wrapper">
+            <canvas id="remote-canvas" style="display: none;"></canvas>
+            <div class="remote-placeholder" id="remote-placeholder">
+                <span class="remote-placeholder-icon">📱</span>
+                <p>点击「连接」开始投屏</p>
+                <p class="hint">系统将自动连接后端 Scrcpy 服务</p>
             </div>
         </div>
+        
+        <div class="remote-controls">
+            <button id="remote-back-btn" class="btn btn-secondary" disabled>◀ 返回</button>
+            <button id="remote-home-btn" class="btn btn-secondary" disabled>● Home</button>
+            <button id="remote-recents-btn" class="btn btn-secondary" disabled>▢ 多任务</button>
+            <span class="divider"></span>
+            <button id="remote-fullscreen-btn" class="btn btn-secondary" disabled>⛶ 全屏</button>
+        </div>
+        
+        <div id="remote-error" class="remote-error" style="display: none; background: #fee; color: #c00; padding: 10px; margin: 10px; border-radius: 4px; border: 1px solid #fcc;"></div>
     </div>
-
-    <div style="width: 100%; max-width: 320px; margin-top: 15px; display: flex; justify-content: space-between;">
-        <span style="font-size: 10px; color: #555;">引擎: Raw-to-JPEG | 帧率: 15FPS</span>
-        <button onclick="RemoteControlModule.reconnect()" class="badge" style="background:transparent; border:1px solid #444; color:#888; padding: 2px 8px; cursor:pointer;">重连</button>
-    </div>
-</div>
-
-<style>
-    .v-nav-btn { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; color: #888; border-radius: 50%; transition: all 0.2s; cursor: pointer; }
-    .v-nav-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
-    .v-nav-btn:active { transform: scale(0.9); background: rgba(255,255,255,0.2); }
-</style>
+</body>
+</html>

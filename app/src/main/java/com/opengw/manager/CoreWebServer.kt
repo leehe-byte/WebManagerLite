@@ -27,7 +27,7 @@ import android.content.IntentFilter
 import android.os.BatteryManager
 
 /**
- * 终极高性能 Ktor 服务器 - 诊断与投屏增强版 (v1.9.1)
+ * 终极高性能 Ktor 服务器 - 诊断与投屏增强版 (v1.9.4)
  */
 class CoreWebServer(private val context: Context, private val port: Int) {
     private val TAG = "TRAFFIC_SNIFFER"
@@ -37,7 +37,9 @@ class CoreWebServer(private val context: Context, private val port: Int) {
     private val ttyd = TtydManager()
     private val atManager = AtManager()
     private val remote = RemoteControlManager()
-    private val batteryStats = BatteryStatsManager(context) // 引入续航统计
+    private val scrcpy = ScrcpyManager(context)
+    private val batteryStats = BatteryStatsManager(context)
+    private val sysStats = SystemStatsManager() // 引入高性能系统统计
     private var server: ApplicationEngine? = null
 
     fun start() {
@@ -71,7 +73,6 @@ class CoreWebServer(private val context: Context, private val port: Int) {
                         put("battery_temp", temp / 10.0) 
                         put("is_charging", isCharging)
                         
-                        // 同步更新续航统计逻辑
                         batteryStats.updateStats(batteryPct, isCharging)
                         
                         val memInfo = ActivityManager.MemoryInfo()
@@ -88,12 +89,16 @@ class CoreWebServer(private val context: Context, private val port: Int) {
                         put("storage_total", totalStorage)
                         put("storage_used", totalStorage - availStorage)
                         put("storage_usage", ((totalStorage - availStorage) * 100 / totalStorage).toInt())
-                        put("cpu_usage", (5..15).random())
+                        put("cpu_usage", sysStats.getDetailedStats().optJSONObject("cpu")?.optInt("total_usage", 5) ?: 5)
                     }
                     call.respondText(status.toString(), ContentType.Application.Json)
                 }
 
-                // 续航历史 API
+                // 高精度性能详情 API
+                get("/api/system/details") {
+                    call.respondText(sysStats.getDetailedStats().toString(), ContentType.Application.Json)
+                }
+
                 get("/api/battery/history") {
                     call.respondText(batteryStats.getHistory(), ContentType.Application.Json)
                 }
@@ -119,6 +124,20 @@ class CoreWebServer(private val context: Context, private val port: Int) {
                     } finally {
                         remote.stopStreaming()
                     }
+                }
+
+                webSocket("/ws/scrcpy") {
+                    try {
+                        scrcpy.startServer()
+                        scrcpy.handleWebSocket(this)
+                    } catch (e: Exception) {
+                        Log.e("WS_SCRCPY", "Error: ${e.message}")
+                    }
+                }
+
+                get("/api/scrcpy/start") {
+                    scrcpy.startServer()
+                    call.respondText("{\"result\":\"Command sent\"}", ContentType.Application.Json)
                 }
 
                 get("/api/at/send") {
@@ -187,5 +206,8 @@ class CoreWebServer(private val context: Context, private val port: Int) {
         }
     }
 
-    fun stop() { server?.stop(1000, 2000) }
+    fun stop() { 
+        server?.stop(1000, 2000) 
+        scrcpy.stopServer()
+    }
 }

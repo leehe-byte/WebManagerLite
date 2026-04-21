@@ -1,0 +1,342 @@
+/* 远程控制 / Scrcpy 投屏样式 */
+
+.remote-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 16px 20px;
+    box-sizing: border-box;
+}
+
+.remote-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.remote-header h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary, #1d1d1f);
+    letter-spacing: -0.3px;
+}
+
+.remote-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.remote-status {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+}
+
+.remote-status-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-secondary, #86868b);
+}
+
+.remote-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #aeaeb2;
+    flex-shrink: 0;
+}
+
+.remote-status-dot.connected {
+    background: #34c759;
+    box-shadow: 0 0 6px rgba(52, 199, 89, 0.4);
+}
+
+.remote-status-dot.connecting {
+    background: #ff9500;
+    animation: remote-pulse 1s infinite;
+}
+
+.remote-status-dot.error {
+    background: #ff3b30;
+}
+
+@keyframes remote-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+.remote-fps {
+    font-family: 'SF Mono', 'Menlo', monospace;
+    font-size: 12px;
+    color: var(--text-secondary, #86868b);
+    min-width: 60px;
+}
+
+/* 连接配置面板 */
+.remote-config {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-secondary, #f5f5f7);
+    padding: 4px 8px;
+    border-radius: 8px;
+}
+
+.remote-config input {
+    width: 140px;
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--border-color, #d1d1d6);
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    background: var(--bg-primary, #fff);
+    color: var(--text-primary, #1d1d1f);
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.remote-config input:focus {
+    outline: none;
+    border-color: #007aff;
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+}
+
+.remote-config input::placeholder {
+    color: var(--text-tertiary, #aeaeb2);
+    font-size: 12px;
+}
+
+/* 视频画面区域 */
+.remote-video-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #111;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    min-height: 0;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+.remote-video-wrapper canvas {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    display: block;
+    cursor: pointer;
+    touch-action: none;
+    background: #000;
+}
+
+.remote-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-tertiary, #666);
+    text-align: center;
+    padding: 40px;
+}
+
+.remote-placeholder-icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.remote-placeholder p {
+    margin: 4px 0;
+    font-size: 14px;
+}
+
+.remote-placeholder .hint {
+    font-size: 12px;
+    color: var(--text-tertiary, #888);
+}
+
+/* 控制按钮组 */
+.remote-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+
+.remote-controls .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 14px;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+    white-space: nowrap;
+}
+
+.remote-controls .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.remote-controls .btn-primary {
+    background: #007aff;
+    color: #fff;
+    box-shadow: 0 1px 3px rgba(0, 122, 255, 0.2);
+}
+
+.remote-controls .btn-primary:hover:not(:disabled) {
+    background: #0066dd;
+}
+
+.remote-controls .btn-danger {
+    background: rgba(255, 59, 48, 0.1);
+    color: #ff3b30;
+}
+
+.remote-controls .btn-danger:hover:not(:disabled) {
+    background: #ff3b30;
+    color: #fff;
+}
+
+.remote-controls .btn-secondary {
+    background: var(--bg-secondary, #f5f5f7);
+    color: var(--text-primary, #1d1d1f);
+    border: 1px solid var(--border-color, #d1d1d6);
+}
+
+.remote-controls .btn-secondary:hover:not(:disabled) {
+    background: var(--bg-tertiary, #eaeaef);
+}
+
+.remote-controls .divider {
+    width: 1px;
+    height: 24px;
+    background: var(--border-color, #d1d1d6);
+    margin: 0 4px;
+}
+
+/* 错误信息 */
+.remote-error {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: rgba(255, 59, 48, 0.08);
+    border-radius: 8px;
+    color: #ff3b30;
+    font-size: 13px;
+    border: 1px solid rgba(255, 59, 48, 0.15);
+}
+
+.remote-info {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: rgba(0, 122, 255, 0.06);
+    border-radius: 8px;
+    color: var(--text-secondary, #86868b);
+    font-size: 13px;
+    border: 1px solid rgba(0, 122, 255, 0.1);
+}
+
+/* 录制状态 */
+.recording-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #ff3b30;
+    font-size: 12px;
+}
+
+.recording-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ff3b30;
+    animation: remote-pulse 1s infinite;
+}
+
+/* 深色主题适配 */
+[data-theme="dark"] .remote-container h2 {
+    color: #f5f5f7;
+}
+
+[data-theme="dark"] .remote-config {
+    background: #2c2c2e;
+}
+
+[data-theme="dark"] .remote-config input {
+    background: #1c1c1e;
+    border-color: #3a3a3c;
+    color: #f5f5f7;
+}
+
+[data-theme="dark"] .remote-config input::placeholder {
+    color: #636366;
+}
+
+[data-theme="dark"] .remote-video-wrapper {
+    background: #000;
+}
+
+[data-theme="dark"] .remote-controls .btn-secondary {
+    background: #2c2c2e;
+    border-color: #3a3a3c;
+    color: #f5f5f7;
+}
+
+[data-theme="dark"] .remote-controls .btn-secondary:hover:not(:disabled) {
+    background: #3a3a3c;
+}
+
+[data-theme="dark"] .remote-controls .divider {
+    background: #3a3a3c;
+}
+
+/* 全屏模式 */
+.remote-container:fullscreen {
+    background: #000;
+    padding: 0;
+}
+
+.remote-container:fullscreen .remote-header,
+.remote-container:fullscreen .remote-controls,
+.remote-container:fullscreen .remote-error,
+.remote-container:fullscreen .remote-info {
+    display: none;
+}
+
+.remote-container:fullscreen .remote-video-wrapper {
+    border-radius: 0;
+}
+
+.remote-container:-webkit-full-screen {
+    background: #000;
+    padding: 0;
+}
+
+.remote-container:-webkit-full-screen .remote-header,
+.remote-container:-webkit-full-screen .remote-controls,
+.remote-container:-webkit-full-screen .remote-error,
+.remote-container:-webkit-full-screen .remote-info {
+    display: none;
+}
+
+.remote-container:-webkit-full-screen .remote-video-wrapper {
+    border-radius: 0;
+}

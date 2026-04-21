@@ -11,8 +11,8 @@ android {
         applicationId = "com.opengw.manager"
         minSdk = 26
         targetSdk = 33
-        versionCode = 32
-        versionName = "2.5.4"
+        versionCode = 33
+        versionName = "2.6.0"
     }
 
     buildTypes {

@@ -1,21 +1,409 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#f0f2f5">
+    android:background="@color/bg_primary">
 
-    <TextView
-        android:id="@+id/infoText"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="正在启动服务..."
-        android:textSize="18sp"
-        android:textColor="#1a1a1a"
-        android:gravity="center"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:orientation="vertical"
+        android:padding="16dp">
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+        <!-- 标题区域 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="20dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🚀"
+                android:textSize="40sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="BridgeLink"
+                android:textSize="24sp"
+                android:textColor="@color/text_primary"
+                android:textStyle="bold"
+                android:layout_marginTop="8dp"
+                android:letterSpacing="0.02" />
+
+            <TextView
+                android:id="@+id/versionText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="v1.0.0"
+                android:textSize="13sp"
+                android:textColor="@color/text_secondary"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
+        <!-- 服务器状态卡片 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/card_bg"
+            android:padding="16dp"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="服务器状态"
+                    android:textSize="16sp"
+                    android:textColor="@color/text_primary"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/statusBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="● 运行中"
+                    android:textSize="13sp"
+                    android:textColor="@color/accent"
+                    android:background="@drawable/badge_green_bg"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="3dp"
+                    android:gravity="center" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/border"
+                android:layout_marginVertical="12dp" />
+
+            <!-- 管理地址 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="管理地址"
+                    android:textSize="13sp"
+                    android:textColor="@color/text_secondary" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="end"
+                    android:id="@+id/addressText"
+                    android:text="http://192.168.1.1:8000"
+                    android:textSize="13sp"
+                    android:textColor="@color/primary"
+                    android:textStyle="bold"
+                    android:fontFamily="monospace" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="8dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="端口"
+                    android:textSize="13sp"
+                    android:textColor="@color/text_secondary" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="end"
+                    android:id="@+id/portText"
+                    android:text="8000"
+                    android:textSize="13sp"
+                    android:textColor="@color/text_primary"
+                    android:textStyle="bold"
+                    android:fontFamily="monospace" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- 设备信息卡片 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/card_bg"
+            android:padding="16dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="设备信息"
+                android:textSize="16sp"
+                android:textColor="@color/text_primary"
+                android:textStyle="bold"
+                android:layout_marginBottom="12dp" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/border"
+                android:layout_marginBottom="12dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="8dp">
+                    <TextView android:layout_width="80dp" android:layout_height="wrap_content"
+                        android:text="型号" android:textSize="13sp" android:textColor="@color/text_secondary" />
+                    <TextView android:id="@+id/modelText" android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:textSize="13sp" android:textColor="@color/text_primary"
+                        android:text="--" android:gravity="end" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="8dp">
+                    <TextView android:layout_width="80dp" android:layout_height="wrap_content"
+                        android:text="Android" android:textSize="13sp" android:textColor="@color/text_secondary" />
+                    <TextView android:id="@+id/androidVerText" android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:textSize="13sp" android:textColor="@color/text_primary"
+                        android:text="--" android:gravity="end" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="8dp">
+                    <TextView android:layout_width="80dp" android:layout_height="wrap_content"
+                        android:text="内核" android:textSize="13sp" android:textColor="@color/text_secondary" />
+                    <TextView android:id="@+id/kernelText" android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:textSize="13sp" android:textColor="@color/text_primary"
+                        android:text="--" android:gravity="end" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="8dp">
+                    <TextView android:layout_width="80dp" android:layout_height="wrap_content"
+                        android:text="运行时间" android:textSize="13sp" android:textColor="@color/text_secondary" />
+                    <TextView android:id="@+id/uptimeText" android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:textSize="13sp" android:textColor="@color/text_primary"
+                        android:text="--" android:gravity="end" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+                    <TextView android:layout_width="80dp" android:layout_height="wrap_content"
+                        android:text="IP 地址" android:textSize="13sp" android:textColor="@color/text_secondary" />
+                    <TextView android:id="@+id/ipText" android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:textSize="13sp" android:textColor="@color/text_primary"
+                        android:text="--" android:gravity="end" android:fontFamily="monospace" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- 资源使用卡片 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/card_bg"
+            android:padding="16dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="资源使用"
+                android:textSize="16sp"
+                android:textColor="@color/text_primary"
+                android:textStyle="bold"
+                android:layout_marginBottom="12dp" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/border"
+                android:layout_marginBottom="12dp" />
+
+            <!-- 电池 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="12dp">
+                <TextView android:layout_width="80dp" android:layout_height="wrap_content"
+                    android:text="电池" android:textSize="13sp" android:textColor="@color/text_secondary" />
+                <LinearLayout
+                    android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:orientation="vertical" android:gravity="end">
+                    <TextView android:id="@+id/batteryText" android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" android:textSize="13sp"
+                        android:textColor="@color/text_primary" android:text="--" android:layout_gravity="end" />
+                    <ProgressBar android:id="@+id/batteryProgress" style="?android:attr/progressBarStyleHorizontal"
+                        android:layout_width="match_parent" android:layout_height="4dp"
+                        android:layout_marginTop="4dp" android:max="100"
+                        android:progressDrawable="@drawable/progress_bar_battery" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- 内存 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="12dp">
+                <TextView android:layout_width="80dp" android:layout_height="wrap_content"
+                    android:text="内存" android:textSize="13sp" android:textColor="@color/text_secondary" />
+                <LinearLayout
+                    android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:orientation="vertical" android:gravity="end">
+                    <TextView android:id="@+id/memoryText" android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" android:textSize="13sp"
+                        android:textColor="@color/text_primary" android:text="--" android:layout_gravity="end" />
+                    <ProgressBar android:id="@+id/memoryProgress" style="?android:attr/progressBarStyleHorizontal"
+                        android:layout_width="match_parent" android:layout_height="4dp"
+                        android:layout_marginTop="4dp" android:max="100"
+                        android:progressDrawable="@drawable/progress_bar_blue" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- 存储 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                <TextView android:layout_width="80dp" android:layout_height="wrap_content"
+                    android:text="存储" android:textSize="13sp" android:textColor="@color/text_secondary" />
+                <LinearLayout
+                    android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:orientation="vertical" android:gravity="end">
+                    <TextView android:id="@+id/storageText" android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" android:textSize="13sp"
+                        android:textColor="@color/text_primary" android:text="--" android:layout_gravity="end" />
+                    <ProgressBar android:id="@+id/storageProgress" style="?android:attr/progressBarStyleHorizontal"
+                        android:layout_width="match_parent" android:layout_height="4dp"
+                        android:layout_marginTop="4dp" android:max="100"
+                        android:progressDrawable="@drawable/progress_bar_orange" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- 端口设置卡片 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/card_bg"
+            android:padding="16dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="端口设置"
+                android:textSize="16sp"
+                android:textColor="@color/text_primary"
+                android:textStyle="bold"
+                android:layout_marginBottom="12dp" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/border"
+                android:layout_marginBottom="12dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <EditText
+                    android:id="@+id/portInput"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:inputType="number"
+                    android:maxLength="5"
+                    android:text="8000"
+                    android:textSize="16sp"
+                    android:fontFamily="monospace"
+                    android:background="@drawable/input_bg"
+                    android:paddingHorizontal="12dp"
+                    android:gravity="center_vertical" />
+
+                <Button
+                    android:id="@+id/applyPortBtn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:text="应用"
+                    android:textSize="14sp"
+                    android:textColor="@color/white"
+                    android:background="@drawable/btn_primary_bg"
+                    android:paddingHorizontal="20dp"
+                    android:layout_marginStart="10dp"
+                    android:stateListAnimator="@null" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/portHintText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="提示：修改端口后服务器将自动重启"
+                android:textSize="12sp"
+                android:textColor="@color/text_tertiary"
+                android:layout_marginTop="6dp" />
+        </LinearLayout>
+
+        <!-- 底部提示 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="请保持此应用在后台运行"
+            android:textSize="12sp"
+            android:textColor="@color/text_tertiary"
+            android:gravity="center"
+            android:padding="16dp" />
+
+    </LinearLayout>
+</ScrollView>

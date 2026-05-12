@@ -80,6 +80,7 @@
             </div>
             <div class="section-content">
                 <a href="javascript:void(0)" class="nav-item" data-page="remote"><p>📱</p> 远程控制</a>
+                <a href="javascript:void(0)" class="nav-item" data-page="security"><p>🔒</p> 安全设置</a>
                 <a href="javascript:void(0)" class="nav-item" data-page="at-command"><p>⚙️</p> AT 指令</a>
                 <a href="javascript:void(0)" class="nav-item" data-page="terminal"><p>💻</p> Web 终端</a>
                 <a href="javascript:void(0)" class="nav-item" data-page="power"><p>⚡</p> 电源管理</a>
@@ -110,15 +111,13 @@
     </div>
 </div>
 
-<!-- 全局自定义选择器 (Picker) - 增加点击外部关闭 -->
+<!-- 全局自定义选择器 (Picker) -->
 <div id="custom-picker" class="modal-overlay" onclick="if(event.target == this) this.classList.remove('active')">
     <div class="modal-container picker-container" onclick="event.stopPropagation()">
         <div class="modal-header">
             <h3 id="picker-title">请选择</h3>
         </div>
-        <div class="modal-body picker-list" id="picker-list" style="padding: 0;">
-            <!-- 选项 -->
-        </div>
+        <div class="modal-body picker-list" id="picker-list" style="padding: 0;"></div>
         <div class="modal-footer">
             <button onclick="document.getElementById('custom-picker').classList.remove('active')" class="btn-secondary" style="width: 100%;">取消</button>
         </div>
@@ -135,11 +134,11 @@
 <script src="js/sms.js"></script>
 <script src="js/at-command.js"></script>
 <script src="js/overview.js"></script>
-<!-- <script src="js/net-debug.js"></script>-->
 <script src="js/net-info.js"></script>
 <script src="js/remote-scrcpy.js"></script>
 <script src="js/power.js"></script>
 <script src="js/samba.js"></script>
+<script src="js/security.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

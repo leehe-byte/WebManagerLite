@@ -62,9 +62,11 @@ class CoreBackgroundService : Service() {
 
     private fun startWebServer() {
         if (webServer == null) {
-            webServer = CoreWebServer(this, 8000)
+            val sp = getSharedPreferences("server_config", Context.MODE_PRIVATE)
+            val port = sp.getInt("server_port", 8000)
+            webServer = CoreWebServer(this, port)
             webServer?.start()
-            Log.i(TAG, "Ktor 服务器已在服务中启动")
+            Log.i(TAG, "Ktor 服务器已在服务中启动 (端口: $port)")
         }
     }
 

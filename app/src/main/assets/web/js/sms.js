@@ -1,108 +1,165 @@
 /**
- * SMS Management Module v3.0 - 聊天聚合版
+ * SMS Management Module v4.1 - 深度定制聊天版
  */
 const SmsModule = {
+    allThreads: [],
+    isDetailView: false,
+    activeNumber: null,
+
     async init() {
-        console.log("SMS Module Initializing...");
-        const container = document.getElementById('sms-list-container');
-        if (!container) {
-            setTimeout(() => this.init(), 100);
-            return;
-        }
+        this.isDetailView = false;
+        this.activeNumber = null;
+        await this.fetchSms();
+    },
+
+    // 供 main.js 定时调用
+    async syncStatus() {
         await this.fetchSms();
     },
 
     async fetchSms() {
-        const container = document.getElementById('sms-list-container');
         try {
             const url = `/api/proxy/goform/goform_get_cmd_process?isTest=false&cmd=sms_data_total&page=0&data_per_page=500&mem_store=1&tags=10&order_by=order%20by%20id%20desc&_=${Date.now()}`;
             const data = await Api.get(url);
 
             if (data && data.messages) {
-                // 按号码聚合
-                const threads = this.groupMessages(data.messages);
-                this.renderSmsThreads(threads);
-            } else {
-                container.innerHTML = '<p style="text-align:center; color:#999; padding:40px;">未获取到有效短信数据</p>';
+                this.allThreads = this.groupMessages(data.messages);
+                
+                if (this.isDetailView && this.activeNumber) {
+                    this.updateDetailView();
+                } else {
+                    this.renderThreads();
+                }
             }
         } catch (e) {
             console.error("Fetch SMS failed:", e);
-            if (container) {
-                container.innerHTML = `<p style="text-align:center; color:red; padding:20px;">获取短信失败: ${e.message}</p>`;
-            }
         }
     },
 
     groupMessages(messages) {
         const groups = {};
         messages.forEach(msg => {
-            if (!groups[msg.number]) {
-                groups[msg.number] = [];
-            }
+            if (!groups[msg.number]) groups[msg.number] = [];
             groups[msg.number].push(msg);
         });
-        // 转换为数组并按最新一条短信的时间排序
-        return Object.keys(groups).map(number => ({
-            number: number,
-            messages: groups[number].sort((a, b) => this.parseDate(a.date) - this.parseDate(b.date)) // 号码内从小到大（聊天流）
-        })).sort((a, b) => {
-            // 对话列表按最后一条短信倒序
-            const lastA = a.messages[a.messages.length - 1];
-            const lastB = b.messages[b.messages.length - 1];
-            return this.parseDate(lastB.date) - this.parseDate(lastA.date);
-        });
+
+        return Object.keys(groups).map(number => {
+            const msgs = groups[number].sort((a, b) => parseInt(a.id) - parseInt(b.id));
+            return {
+                number: number,
+                messages: msgs,
+                lastDate: msgs[msgs.length - 1].date,
+                hasUnread: msgs.some(m => m.tag === "1"),
+                unreadCount: msgs.filter(m => m.tag === "1").length
+            };
+        }).sort((a, b) => this.parseDate(b.lastDate) - this.parseDate(a.lastDate));
     },
 
-    renderSmsThreads(threads) {
-        const container = document.getElementById('sms-list-container');
+    renderThreads() {
+        const container = document.getElementById('sms-threads-container');
         const countBadge = document.getElementById('sms-total-count');
-        if (!container) return;
-        
-        countBadge.textContent = `${threads.length} 个会话`;
+        if (!container || this.isDetailView) return;
 
-        container.innerHTML = threads.map(thread => {
+        countBadge.textContent = `${this.allThreads.length} 个会话`;
+        
+        container.innerHTML = this.allThreads.map(thread => {
             const lastMsg = thread.messages[thread.messages.length - 1];
-            
+            const content = this.safeBase64Decode(lastMsg.content);
             return `
-                <div class="sms-thread-card">
-                    <div class="sms-thread-header" onclick="this.parentElement.classList.toggle('expanded')">
-                        <div class="sms-thread-info">
-                            <span class="sms-number">${thread.number}</span>
-                            <span class="sms-count-tag">${thread.messages.length} 条</span>
+                <div class="sms-thread-item" onclick="SmsModule.openThread('${thread.number}')">
+                    ${thread.hasUnread ? '<div class="unread-dot"></div>' : ''}
+                    <div class="sms-thread-avatar">${thread.number.substring(0, 1)}</div>
+                    <div class="sms-thread-main">
+                        <div class="sms-thread-top">
+                            <span class="sms-thread-number">${thread.number} ${thread.unreadCount > 0 ? `<span style="color:#ff4d4f; font-size:12px;">(${thread.unreadCount})</span>` : ''}</span>
+                            <span class="sms-thread-time">${this.formatSimpleTime(lastMsg.date)}</span>
                         </div>
-                        <span class="sms-date">${this.formatSmsDate(lastMsg.date)}</span>
-                    </div>
-                    <div class="sms-chat-body">
-                        ${thread.messages.map(msg => this.renderBubble(msg)).join('')}
+                        <div class="sms-thread-snippet">${content}</div>
                     </div>
                 </div>
             `;
         }).join('');
     },
 
+    openThread(number) {
+        this.activeNumber = number;
+        this.isDetailView = true;
+        
+        document.getElementById('sms-list-view').style.display = 'none';
+        document.getElementById('sms-detail-view').style.display = 'block';
+        
+        this.updateDetailView(true); // true 表示需要强制滚动到底部
+    },
+
+    updateDetailView(forceScroll = false) {
+        const thread = this.allThreads.find(t => t.number === this.activeNumber);
+        if (!thread) return;
+
+        document.getElementById('detail-number').textContent = this.activeNumber;
+        document.getElementById('detail-count').textContent = `共 ${thread.messages.length} 条记录`;
+
+        const chatContainer = document.getElementById('chat-flow-container');
+        const oldHeight = chatContainer.scrollHeight;
+        
+        chatContainer.innerHTML = thread.messages.map(msg => this.renderBubble(msg)).join('');
+
+        // 仅在初次进入或有新消息时滚动
+        if (forceScroll || chatContainer.scrollHeight > oldHeight) {
+            setTimeout(() => {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }, 50);
+        }
+
+        // 处理已读
+        const unreadIds = thread.messages.filter(m => m.tag === "1").map(m => m.id);
+        if (unreadIds.length > 0) {
+            this.markAsRead(unreadIds);
+            thread.hasUnread = false;
+            thread.unreadCount = 0;
+            thread.messages.forEach(m => m.tag = "0");
+        }
+    },
+
+    async markAsRead(ids) {
+        try {
+            const idStr = ids.join(';') + ';';
+            const payload = `isTest=false&goformId=SET_MSG_READ&msg_id=${encodeURIComponent(idStr)}&tag=0`;
+            await Api.post('/api/proxy/goform/goform_set_cmd_process', payload);
+        } catch (e) {
+            console.error("Mark as read failed:", e);
+        }
+    },
+
+    backToList() {
+        this.isDetailView = false;
+        this.activeNumber = null;
+        document.getElementById('sms-detail-view').style.display = 'none';
+        document.getElementById('sms-list-view').style.display = 'block';
+        this.renderThreads();
+    },
+
     renderBubble(msg) {
         const content = this.safeBase64Decode(msg.content);
         const otp = this.extractOTP(content);
-        const dateStr = this.formatSmsDate(msg.date);
+        const dateStr = this.formatFullDate(msg.date);
 
         return `
             <div class="chat-bubble-wrap">
                 <div class="chat-bubble">
-                    <div class="bubble-content">${content}</div>
+                    <div class="chat-content">${content}</div>
                     ${otp ? `
-                        <div class="otp-box">
-                            <span class="otp-code">${otp}</span>
-                            <button class="btn-copy-otp" onclick="SmsModule.copyText('${otp}', this)">复制</button>
+                        <div class="otp-card">
+                            <span class="otp-val">${otp}</span>
+                            <button class="btn-copy-sm" onclick="event.stopPropagation(); SmsModule.copyText('${otp}', this)">复制</button>
                         </div>
                     ` : ''}
-                    <div class="bubble-footer">${dateStr}</div>
                 </div>
+                <div class="chat-time">${dateStr}</div>
             </div>
         `;
     },
 
     extractOTP(text) {
-        // 匹配 4-8 位纯数字，通常出现在包含“验证码”字样的短信中
         if (/(验证码|校验码|动态码|code|验证码为)/i.test(text)) {
             const match = text.match(/\b\d{4,8}\b/);
             return match ? match[0] : null;
@@ -111,48 +168,33 @@ const SmsModule = {
     },
 
     copyText(text, btn) {
-        //内部函数：传统的复制方案（兼容 HTTP）
-        const fallbackCopy = (val) => {
-            const textArea = document.createElement("textarea");
-            textArea.value = val;
-            // 确保不可见但可选中
-            textArea.style.position = "fixed";
-            textArea.style.left = "-9999px";
-            textArea.style.top = "0";
-            document.body.appendChild(textArea);
-            textArea.select();
-            let success = false;
-            try {
-                success = document.execCommand('copy');
-            } catch (err) {
-                console.error('Fallback copy failed', err);
-            }
-            document.body.removeChild(textArea);
-            return success;
-        };
-
-        // 内部函数：更新按钮 UI 反馈
         const updateUI = () => {
-            const originalText = btn.textContent;
+            const oldText = btn.textContent;
             btn.textContent = '已复制';
-            btn.classList.add('success'); // 对应 style.css 中的绿色背景
+            btn.style.background = '#52c41a';
             setTimeout(() => {
-                btn.textContent = originalText;
-                btn.classList.remove('success');
+                btn.textContent = oldText;
+                btn.style.background = '';
             }, 2000);
         };
 
-
-        // 优先使用现代 API，如果失败则使用传统 API
         if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(text)
-                .then(updateUI)
-                .catch(() => {
-                    if (fallbackCopy(text)) updateUI();
-                });
+            navigator.clipboard.writeText(text).then(updateUI).catch(() => {
+                this.fallbackCopy(text) && updateUI();
+            });
         } else {
-            if (fallbackCopy(text)) updateUI();
+            this.fallbackCopy(text) && updateUI();
         }
+    },
+
+    fallbackCopy(val) {
+        const textArea = document.createElement("textarea");
+        textArea.value = val;
+        document.body.appendChild(textArea);
+        textArea.select();
+        const res = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        return res;
     },
 
     safeBase64Decode(base64) {
@@ -164,19 +206,22 @@ const SmsModule = {
             }
             return new TextDecoder('utf-8').decode(bytes);
         } catch (e) {
-            return atob(base64);
+            return "解码失败";
         }
     },
 
     parseDate(dateStr) {
-        // "26,03,09,09,54,29,+0800"
         const p = dateStr.split(',');
         return new Date(`20${p[0]}-${p[1]}-${p[2]}T${p[3]}:${p[4]}:${p[5].substring(0,2)}`);
     },
 
-    formatSmsDate(dateStr) {
-        if (!dateStr) return "";
+    formatSimpleTime(dateStr) {
         const p = dateStr.split(',');
-        return `${p[1]}-${p[2]} ${p[3]}:${p[4]}`;
+        return `${p[1]}/${p[2]} ${p[3]}:${p[4]}`;
+    },
+
+    formatFullDate(dateStr) {
+        const p = dateStr.split(',');
+        return `20${p[0]}-${p[1]}-${p[2]} ${p[3]}:${p[4]}:${p[5].substring(0,2)}`;
     }
 };

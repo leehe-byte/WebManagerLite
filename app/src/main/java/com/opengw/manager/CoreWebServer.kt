@@ -18,6 +18,7 @@ import kotlinx.coroutines.channels.consumeEach
 import org.slf4j.event.Level
 import java.io.InputStream
 import java.util.*
+import org.json.JSONArray
 import org.json.JSONObject
 import android.app.ActivityManager
 import android.os.Environment
@@ -38,6 +39,7 @@ class CoreWebServer(private val context: Context, private val port: Int) {
     private val atManager = AtManager()
     private val remote = RemoteControlManager()
     private val scrcpy = ScrcpyManager(context)
+    private val samba = SambaManager()
     private val batteryStats = BatteryStatsManager(context)
     private val sysStats = SystemStatsManager() // 引入高性能系统统计
     private var server: ApplicationEngine? = null
@@ -159,22 +161,129 @@ class CoreWebServer(private val context: Context, private val port: Int) {
                     }
                 }
 
+                // ===== Mihomo 管理 API =====
                 get("/api/mihomo/status") { call.respondText(mihomo.getStatus().toString(), ContentType.Application.Json) }
                 post("/api/mihomo/action") { 
                     val res = mihomo.doAction(call.request.queryParameters["action"] ?: "", call.request.queryParameters["sub"])
                     call.respondText(JSONObject().apply { put("result", res) }.toString(), ContentType.Application.Json) 
                 }
                 get("/api/mihomo/log") { call.respondText(mihomo.getLogs(), ContentType.Text.Plain) }
+                
+                // 获取原始 config.yaml 内容（纯文本）
+                get("/api/mihomo/raw-config") {
+                    call.respondText(mihomo.readRawConfig(), ContentType.Text.Plain)
+                }
+                // 获取完整配置（JSON 格式）
+                get("/api/mihomo/config") {
+                    call.respondText(mihomo.getConfigJson(), ContentType.Application.Json)
+                }
+                // 保存完整配置
+                post("/api/mihomo/config") {
+                    val body = call.receiveText()
+                    val postData = extractPostData(body)
+                    val result = mihomo.saveRawConfig(postData.optString("content", ""))
+                    call.respondText(result, ContentType.Application.Json)
+                }
+                // 获取可用 Web UI 列表
+                get("/api/mihomo/webui-list") {
+                    call.respondText(mihomo.getWebUIList(), ContentType.Application.Json)
+                }
+                // 修改基础设置
+                post("/api/mihomo/setting") {
+                    val action = call.request.queryParameters["action"] ?: ""
+                    val value = call.request.queryParameters["value"] ?: ""
+                    call.respondText(mihomo.updateSetting(action, value), ContentType.Application.Json)
+                }
+                // 更新 User-Agent 列表
+                post("/api/mihomo/ua") {
+                    val body = call.receiveText()
+                    val postData = extractPostData(body)
+                    val uas = postData.optJSONArray("user_agents") ?: JSONArray()
+                    call.respondText(mihomo.updateUserAgents(uas), ContentType.Application.Json)
+                }
+                // 获取订阅列表
+                get("/api/mihomo/subs") {
+                    call.respondText(mihomo.getSubscriptions(), ContentType.Application.Json)
+                }
+                // 新增订阅
+                post("/api/mihomo/sub/add") {
+                    val name = call.request.queryParameters["name"] ?: ""
+                    val url = call.request.queryParameters["url"] ?: ""
+                    val ua = call.request.queryParameters["ua"] ?: ""
+                    val interval = call.request.queryParameters["interval"]?.toIntOrNull() ?: 86400
+                    call.respondText(mihomo.addSubscription(name, url, ua, interval), ContentType.Application.Json)
+                }
+                // 删除订阅
+                post("/api/mihomo/sub/remove") {
+                    val name = call.request.queryParameters["name"] ?: ""
+                    call.respondText(mihomo.removeSubscription(name), ContentType.Application.Json)
+                }
+                // 更新订阅 URL
+                post("/api/mihomo/sub/update") {
+                    val name = call.request.queryParameters["name"] ?: ""
+                    val url = call.request.queryParameters["url"] ?: ""
+                    call.respondText(mihomo.updateSubscriptionUrl(name, url), ContentType.Application.Json)
+                }
+                // 更新所有订阅
+                post("/api/mihomo/sub/update-all") {
+                    call.respondText(mihomo.updateAllSubscriptions(), ContentType.Application.Json)
+                }
+                // 编译/检查配置
+                post("/api/mihomo/check") {
+                    val result = mihomo.doAction("check", null)
+                    call.respondText(JSONObject().apply { put("result", result) }.toString(), ContentType.Application.Json)
+                }
+                // 获取最新日志（轮询用）
+                get("/api/mihomo/log/latest") {
+                    val lines = call.request.queryParameters["lines"]?.toIntOrNull() ?: 50
+                    call.respondText(mihomo.getLogs(lines), ContentType.Text.Plain)
+                }
+                // ===== Samba 管理 API（仅配置读写，启停由前端通过 goform 控制）=====
+                get("/api/samba/status") { call.respondText(samba.getStatus().toString(), ContentType.Application.Json) }
+                get("/api/samba/config") { call.respondText(samba.readConfig(), ContentType.Text.Plain) }
+                post("/api/samba/config") {
+                    val body = call.receiveText()
+                    val postData = extractPostData(body)
+                    call.respondText(samba.writeConfig(postData.optString("content", "")), ContentType.Application.Json)
+                }
+                get("/api/samba/shares") { call.respondText(samba.getShares().toString(), ContentType.Application.Json) }
+                post("/api/samba/shares") {
+                    val body = call.receiveText()
+                    val postData = extractPostData(body)
+                    val shares = postData.optJSONArray("shares") ?: JSONArray()
+                    call.respondText(samba.updateShares(shares), ContentType.Application.Json)
+                }
+                post("/api/samba/share/add") {
+                    val name = call.request.queryParameters["name"] ?: ""
+                    val path = call.request.queryParameters["path"] ?: ""
+                    val comment = call.request.queryParameters["comment"] ?: ""
+                    call.respondText(samba.addShare(name, path, comment), ContentType.Application.Json)
+                }
+                post("/api/samba/share/remove") {
+                    val name = call.request.queryParameters["name"] ?: ""
+                    call.respondText(samba.removeShare(name), ContentType.Application.Json)
+                }
+
                 get("/api/adb/status") { call.respondText(adb.getStatus().toString(), ContentType.Application.Json) }
                 post("/api/adb/action") { call.respondText(JSONObject().apply { put("result", adb.doAction(call.request.queryParameters["action"] ?: "")) }.toString(), ContentType.Application.Json) }
                 get("/api/ttyd/status") { call.respondText(ttyd.getStatus().toString(), ContentType.Application.Json) }
                 post("/api/ttyd/start") { call.respondText(JSONObject().apply { put("result", ttyd.start()) }.toString(), ContentType.Application.Json) }
                 post("/api/ttyd/stop") { call.respondText(JSONObject().apply { put("result", ttyd.stop()) }.toString(), ContentType.Application.Json) }
+                
                 post("/api/auth/login") {
                     val pass = call.request.queryParameters["password"] ?: ""
                     val result = withContext(Dispatchers.IO) { bridge.doLogin(pass) }
                     call.respondText(if (result == "SUCCESS") "{\"result\":0, \"token\":\"session-ok\"}" else "{\"result\":-1, \"msg\":\"$result\"}", ContentType.Application.Json)
                 }
+
+                post("/api/auth/change-password") {
+                    val oldPwd = call.request.queryParameters["old"] ?: ""
+                    val newPwd = call.request.queryParameters["new"] ?: ""
+                    val payload = "oldPassword=$oldPwd&newPassword=$newPwd&goformId=CHANGE_PASSWORD"
+                    val response = withContext(Dispatchers.IO) { bridge.dispatch("/goform/goform_set_cmd_process", "POST", null, payload) }
+                    call.respondText(String(response.bytes), ContentType.Application.Json)
+                }
+
                 get("{...}") {
                     val rawPath = call.request.path().removePrefix("/")
                     val path = if (rawPath.isBlank()) "index.html" else rawPath
@@ -203,6 +312,23 @@ class CoreWebServer(private val context: Context, private val port: Int) {
             path.endsWith(".svg") -> "image/svg+xml"
             path.endsWith(".png") -> "image/png"
             else -> "text/plain"
+        }
+    }
+
+    /**
+     * 从 Api.post 发送的 form-urlencoded 格式中提取 JSON 数据
+     * 前端 Api.post 发送格式: postData={"key":"value"}
+     */
+    private fun extractPostData(body: String): JSONObject {
+        return try {
+            if (body.startsWith("postData=")) {
+                val decoded = java.net.URLDecoder.decode(body.removePrefix("postData="), "UTF-8")
+                JSONObject(decoded)
+            } else {
+                JSONObject(body)
+            }
+        } catch (e: Exception) {
+            JSONObject()
         }
     }
 

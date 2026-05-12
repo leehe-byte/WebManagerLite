@@ -43,24 +43,15 @@ class GatewayClient {
         return "192.168.0.1"
     }
 
-    /**
-     * 执行原厂双重令牌登录
-     */
     fun performHandshake(password: String): JSONObject {
         try {
-            // 1. 获取挑战令牌 (原 LD)
             val challengeJson = executeDirect("/goform/goform_get_cmd_process?isTest=false&cmd=LD&_=${System.currentTimeMillis()}")
             val challenge = challengeJson.optString("LD")
-            
-            // 2. 计算安全哈希: SHA256(SHA256(pwd) + Token)
             val secureHash = computeHash(computeHash(password) + challenge)
-
-            // 3. 提交登录
             val payload = "isTest=false&goformId=LOGIN&user=admin&password=$secureHash"
             val response = executeRawPost("/goform/goform_set_cmd_process", payload)
             
-            if (response.contains("\"result\":0") || response.contains("\"result\":\"0\"")) {
-                // 4. 提取会话
+            if (response.contains("\"result\":0") || response.contains("\"result\":\"0\"") || response.contains("success")) {
                 loadSystemVersions()
                 return JSONObject().put("status", "success").put("msg", "Authenticated")
             }
@@ -71,17 +62,15 @@ class GatewayClient {
     }
 
     /**
-     * 智能代理：自动处理动作验证码 (原 AD)
+     * 执行代理请求，自动附加动作校验码 (AD)
      */
     fun proxyRequest(path: String, method: String, params: Map<String, String>?, body: String?): String {
         return if (method == "POST") {
-            // 获取动态随机数 (原 RD)
             val nonceJson = executeDirect("/goform/goform_get_cmd_process?isTest=false&cmd=RD&_=${System.currentTimeMillis()}")
             val nonce = nonceJson.optString("RD")
-            
-            // 计算动作校验码: SHA256(SHA256(HW+SW) + Nonce)
+            // 计算 AD: SHA256(SHA256(waVer + crVer) + RD)
             val verifier = computeHash(computeHash(hardwareId + softwareId) + nonce)
-            val finalBody = "${body ?: ""}&isTest=false&AD=$verifier"
+            val finalBody = "${body ?: ""}&AD=$verifier"
             executeRawPost(path, finalBody)
         } else {
             val query = params?.entries?.joinToString("&") { "${it.key}=${it.value}" }
@@ -101,6 +90,7 @@ class GatewayClient {
 
     private fun executeRawGet(path: String): String {
         val request = buildBaseRequest(path).get().build()
+        performCall(request) // 此处为了简单直接复用 performCall
         return performCall(request)
     }
 
@@ -117,7 +107,7 @@ class GatewayClient {
             .url(url)
             .header("Host", ip)
             .header("Referer", "http://$ip/index.html")
-            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+            .header("User-Agent", "Mozilla/5.0")
             .apply {
                 sessionCookie?.let { header("Cookie", it) }
             }
@@ -125,7 +115,6 @@ class GatewayClient {
 
     private fun performCall(request: Request): String {
         httpClient.newCall(request).execute().use { response ->
-            // 更新 Cookie
             response.header("Set-Cookie")?.let { 
                 sessionCookie = it.split(";")[0] 
             }
@@ -133,7 +122,7 @@ class GatewayClient {
         }
     }
 
-    private fun computeHash(input: String): String {
+    fun computeHash(input: String): String {
         val bytes = MessageDigest.getInstance("SHA-256").digest(input.toByteArray())
         return bytes.joinToString("") { "%02x".format(it) }.uppercase()
     }

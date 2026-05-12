@@ -1,0 +1,29 @@
+<!-- C:/Users/he/AndroidStudioProjects/WebManagerLite/app/src/main/assets/web/pages/security.html -->
+<div class="card">
+    <div class="card-header">
+        <h3>修改管理密码</h3>
+    </div>
+    <div class="card-body">
+        <p style="font-size: 12px; color: var(--text-sub); margin-bottom: 20px;">
+            修改原厂 Web 管理界面的登录密码。修改成功后，本工具及原厂界面均需使用新密码登录。
+        </p>
+        
+        <div class="form-group" style="margin-bottom: 15px;">
+            <label style="display: block; font-size: 13px; margin-bottom: 8px;">原密码</label>
+            <input type="password" id="old-password" class="form-control" placeholder="请输入当前密码" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-body); color: var(--text-main);">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 15px;">
+            <label style="display: block; font-size: 13px; margin-bottom: 8px;">新密码</label>
+            <input type="password" id="new-password" class="form-control" placeholder="请输入新密码" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-body); color: var(--text-main);">
+            <div id="password-strength" style="font-size: 11px; margin-top: 5px; color: #ff4d4f;"></div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 25px;">
+            <label style="display: block; font-size: 13px; margin-bottom: 8px;">确认新密码</label>
+            <input type="password" id="confirm-password" class="form-control" placeholder="请再次输入新密码" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-body); color: var(--text-main);">
+        </div>
+
+        <button id="btn-change-pwd" class="btn-primary" style="width: 100%; padding: 12px; font-weight: bold;">提交修改</button>
+    </div>
+</div>

@@ -99,6 +99,8 @@ function initPageLogic(pageId) {
         OverviewModule.init();
     } else if (pageId === 'net-info' && typeof NetInfoModule !== 'undefined') {
         NetInfoModule.init();
+    } else if (pageId === 'security' && typeof SecurityModule !== 'undefined') {
+        SecurityModule.init(); // 初始化安全设置逻辑
     } else if (pageId === 'lan' && typeof LanModule !== 'undefined') {
         LanModule.init();
     } else if (pageId === 'mihomo' && typeof MihomoModule !== 'undefined') {

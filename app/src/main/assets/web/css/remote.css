@@ -165,12 +165,89 @@
     color: var(--text-tertiary, #888);
 }
 
+/* Android 导航三键栏 - 紧贴画面下方，与画面同宽 */
+.remote-nav-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin-top: 0;
+    padding: 8px 0;
+    background: var(--card-bg, #fff);
+    border: 1px solid var(--border-color, #d1d1d6);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    user-select: none;
+    -webkit-user-select: none;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+[data-theme="dark"] .remote-nav-bar {
+    background: var(--card-bg, #1c1c1e);
+    border-color: var(--border-color, #3a3a3c);
+}
+
+.nav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 40px;
+    border: none;
+    background: transparent;
+    color: var(--text-main, #1d1d1f);
+    font-size: 20px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background 0.15s, opacity 0.15s;
+    position: relative;
+    -webkit-tap-highlight-color: transparent;
+    font-weight: 400;
+}
+
+.nav-btn:hover:not(:disabled) {
+    background: var(--bg-hover, rgba(0,0,0,0.05));
+}
+
+[data-theme="dark"] .nav-btn:hover:not(:disabled) {
+    background: rgba(255,255,255,0.08);
+}
+
+.nav-btn:active:not(:disabled) {
+    background: var(--bg-active, rgba(0,0,0,0.1));
+    transform: scale(0.92);
+}
+
+[data-theme="dark"] .nav-btn:active:not(:disabled) {
+    background: rgba(255,255,255,0.12);
+}
+
+.nav-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+/* 导航按钮之间的分隔线 */
+.nav-btn + .nav-btn::before {
+    content: '';
+    position: absolute;
+    left: -0.5px;
+    top: 10px;
+    bottom: 10px;
+    width: 1px;
+    background: var(--border-color, #d1d1d6);
+}
+
+[data-theme="dark"] .nav-btn + .nav-btn::before {
+    background: #3a3a3c;
+}
+
 /* 控制按钮组 */
 .remote-controls {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-top: 12px;
+    margin-top: 10px;
     flex-wrap: wrap;
 }
 

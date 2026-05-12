@@ -23,7 +23,17 @@ const Api = {
                 return null;
             }
 
-            return await response.json();
+            const text = await response.text();
+            if (!text || text.trim() === '') return {};
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                // 非 JSON 响应，尝试提取 result
+                if (text.includes('success') || text.includes('"result"')) {
+                    return { result: 'success', raw: text };
+                }
+                return { result: text.trim(), raw: text };
+            }
         } catch (error) {
             console.error('API Error:', error);
             throw error;

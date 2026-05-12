@@ -309,7 +309,7 @@ const NetInfoModule = {
                         nfcSwitch.dataset.bound = "true";
                         nfcSwitch.onchange = async () => {
                             const targetVal = nfcSwitch.checked ? "1" : "0";
-                            const res = await Api.post('/api/proxy/goform/goform_set_cmd_process', { isTest: 'false', goformId: 'WIFI_NFC_SET', web_wifi_nfc_switch: targetVal, AD: '54B9A0BCB161006EFDA2D75489402B11C2E76BC8306D424860D34E591141F68C' });
+                            const res = await Api.post('/api/proxy/goform/goform_set_cmd_process', { isTest: 'false', goformId: 'WIFI_NFC_SET', web_wifi_nfc_switch: targetVal });
                             if (res && res.result === 'success') {
                                 if (nfcStatusTxt) {
                                     nfcStatusTxt.textContent = nfcSwitch.checked ? "已开启" : "已关闭";

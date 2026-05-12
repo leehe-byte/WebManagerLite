@@ -1,6 +1,74 @@
 <!-- C:/Users/he/AndroidStudioProjects/WebManagerLite/app/src/main/assets/web/pages/overview.html -->
 <div class="card-grid">
-    <!-- A. 系统详情 -->
+    <!-- A. 网络摘要 -->
+    <div class="card">
+        <div class="card-header">
+            <h3>网络摘要</h3>
+            <span id="net-type-badge" class="badge">--</span>
+        </div>
+        <div class="card-body">
+            <div class="operator-line">
+                <div class="op-brand">
+                    <img id="operator-logo" src="img/unknown.png" class="op-icon-small">
+                    <h2 id="operator">正在读取...</h2>
+                </div>
+                <div class="op-signal">
+                    <span id="dbm-value" style="font-size: 13px; color: #8c8c8c; margin-right: 8px;">-- dBm</span>
+                    <div id="signal-bars" class="signal-bars-row">
+                        <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                    </div>
+                </div>
+            </div>
+            <p id="c-status" style="font-size: 12px; color: #8c8c8c; margin-bottom: 15px;">检测中</p>
+
+            <table class="info-table" style="margin-bottom: 10px;">
+                <tr><td>使用的卡槽</td><td id="sim-badge" style="color:var(--primary);font-weight:bold">--</td></tr>
+                <tr><td>漫游状态</td><td id="roam-status">--</td></tr>
+            </table>
+
+            <div style="background: var(--bg-body); padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px solid var(--border-color);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <span style="font-size: 11px; color: var(--text-sub);">IPv4 地址</span>
+                    <div class="value-box" style="display: flex; align-items: center; gap: 6px;">
+                        <span class="masked-value" data-target="wan-ip" style="font-family: monospace; font-size: 13px;">***********</span>
+                        <i class="eye-toggle" onclick="toggleVisibility('wan-ip')" style="cursor: pointer; font-style: normal;">🔒</i>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 11px; color: var(--text-sub);">IPv6 地址</span>
+                    <div class="value-box" style="display: flex; align-items: center; gap: 6px;">
+                        <span class="masked-value" data-target="wan-ipv6" style="font-family: monospace; font-size: 11px; opacity: 0.8;">***********</span>
+                        <i class="eye-toggle" onclick="toggleVisibility('wan-ipv6')" style="cursor: pointer; font-style: normal;">🔒</i>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                <div style="background: rgba(24, 144, 255, 0.05); padding: 12px; border-radius: 10px; border: 1px solid rgba(24, 144, 255, 0.1);">
+                    <div style="font-size: 11px; color: #1890ff; margin-bottom: 4px;">↓ 下载网速</div>
+                    <div id="down-speed" style="font-size: 16px; font-weight: bold; color: var(--text-main);">0 B/s</div>
+                </div>
+                <div style="background: rgba(82, 196, 26, 0.05); padding: 12px; border-radius: 10px; border: 1px solid rgba(82, 196, 26, 0.1);">
+                    <div style="font-size: 11px; color: #52c41a; margin-bottom: 4px;">↑ 上传网速</div>
+                    <div id="up-speed" style="font-size: 16px; font-weight: bold; color: var(--text-main);">0 B/s</div>
+                </div>
+            </div>
+
+            <div style="background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-body) 100%); border: 1px solid var(--border-color); border-radius: 12px; padding: 15px; position: relative; overflow: hidden;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <span style="font-size: 12px; color: var(--text-sub); font-weight: 500;">本月总量统计</span>
+                    <strong id="monthly-usage" style="font-size: 20px; font-weight: 800; color: var(--primary);">0.00 MB</strong>
+                </div>
+                <div style="display: flex; gap: 15px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+                    <div style="flex: 1;"><div style="font-size: 10px; color: var(--text-sub); margin-bottom: 2px;">已下载 (RX)</div><div id="monthly-rx" style="font-size: 14px; font-weight: 600;">0.00 MB</div></div>
+                    <div style="width: 1px; background: var(--border-color); align-self: stretch;"></div>
+                    <div style="flex: 1;"><div style="font-size: 10px; color: var(--text-sub); margin-bottom: 2px;">已上传 (TX)</div><div id="monthly-tx" style="font-size: 14px; font-weight: 600;">0.00 MB</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- B. 系统详情 -->
     <div class="card">
         <div class="card-header"><h3>系统详情</h3></div>
         <div class="card-body">
@@ -30,7 +98,7 @@
         </div>
     </div>
 
-    <!-- B. 系统性能中心 -->
+    <!-- C. 系统性能中心 -->
     <div class="card" style="grid-column: span 1;">
         <div class="card-header">
             <div style="display: flex; flex-direction: column;">
@@ -94,74 +162,6 @@
                 </div>
                 <div style="font-size: 10px; color: var(--text-sub);">
                     系统状态: <span style="color:var(--success)">正常</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- C. 网络摘要 -->
-    <div class="card">
-        <div class="card-header">
-            <h3>网络摘要</h3>
-            <span id="net-type-badge" class="badge">--</span>
-        </div>
-        <div class="card-body">
-            <div class="operator-line">
-                <div class="op-brand">
-                    <img id="operator-logo" src="img/unknown.png" class="op-icon-small">
-                    <h2 id="operator">正在读取...</h2>
-                </div>
-                <div class="op-signal">
-                    <span id="dbm-value" style="font-size: 13px; color: #8c8c8c; margin-right: 8px;">-- dBm</span>
-                    <div id="signal-bars" class="signal-bars-row">
-                        <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
-                    </div>
-                </div>
-            </div>
-            <p id="c-status" style="font-size: 12px; color: #8c8c8c; margin-bottom: 15px;">检测中</p>
-
-            <table class="info-table" style="margin-bottom: 10px;">
-                <tr><td>使用的卡槽</td><td id="sim-badge" style="color:var(--primary);font-weight:bold">--</td></tr>
-                <tr><td>漫游状态</td><td id="roam-status">--</td></tr>
-            </table>
-
-            <div style="background: var(--bg-body); padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px solid var(--border-color);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                    <span style="font-size: 11px; color: var(--text-sub);">IPv4 地址</span>
-                    <div class="value-box" style="display: flex; align-items: center; gap: 6px;">
-                        <span class="masked-value" data-target="wan-ip" style="font-family: monospace; font-size: 13px;">***********</span>
-                        <i class="eye-toggle" onclick="toggleVisibility('wan-ip')" style="cursor: pointer; font-style: normal;">🔒</i>
-                    </div>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 11px; color: var(--text-sub);">IPv6 地址</span>
-                    <div class="value-box" style="display: flex; align-items: center; gap: 6px;">
-                        <span class="masked-value" data-target="wan-ipv6" style="font-family: monospace; font-size: 11px; opacity: 0.8;">***********</span>
-                        <i class="eye-toggle" onclick="toggleVisibility('wan-ipv6')" style="cursor: pointer; font-style: normal;">🔒</i>
-                    </div>
-                </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
-                <div style="background: rgba(24, 144, 255, 0.05); padding: 12px; border-radius: 10px; border: 1px solid rgba(24, 144, 255, 0.1);">
-                    <div style="font-size: 11px; color: #1890ff; margin-bottom: 4px;">↓ 下载网速</div>
-                    <div id="down-speed" style="font-size: 16px; font-weight: bold; color: var(--text-main);">0 B/s</div>
-                </div>
-                <div style="background: rgba(82, 196, 26, 0.05); padding: 12px; border-radius: 10px; border: 1px solid rgba(82, 196, 26, 0.1);">
-                    <div style="font-size: 11px; color: #52c41a; margin-bottom: 4px;">↑ 上传网速</div>
-                    <div id="up-speed" style="font-size: 16px; font-weight: bold; color: var(--text-main);">0 B/s</div>
-                </div>
-            </div>
-
-            <div style="background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-body) 100%); border: 1px solid var(--border-color); border-radius: 12px; padding: 15px; position: relative; overflow: hidden;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                    <span style="font-size: 12px; color: var(--text-sub); font-weight: 500;">本月总量统计</span>
-                    <strong id="monthly-usage" style="font-size: 20px; font-weight: 800; color: var(--primary);">0.00 MB</strong>
-                </div>
-                <div style="display: flex; gap: 15px; border-top: 1px solid var(--border-color); padding-top: 12px;">
-                    <div style="flex: 1;"><div style="font-size: 10px; color: var(--text-sub); margin-bottom: 2px;">已下载 (RX)</div><div id="monthly-rx" style="font-size: 14px; font-weight: 600;">0.00 MB</div></div>
-                    <div style="width: 1px; background: var(--border-color); align-self: stretch;"></div>
-                    <div style="flex: 1;"><div style="font-size: 10px; color: var(--text-sub); margin-bottom: 2px;">已上传 (TX)</div><div id="monthly-tx" style="font-size: 14px; font-weight: 600;">0.00 MB</div></div>
                 </div>
             </div>
         </div>

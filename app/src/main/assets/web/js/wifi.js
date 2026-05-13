@@ -13,10 +13,15 @@ const WifiModule = {
 
     async fetchData() {
         try {
-            const url = `/api/proxy/goform/goform_get_cmd_process?isTest=false&cmd=queryAccessPointInfo&_=${Date.now()}`;
+            // 同时获取 WiFi 开关状态和 AP 信息
+            const url = `/api/proxy/goform/goform_get_cmd_process?isTest=false&cmd=wifi_onoff_state,queryAccessPointInfo&multi_data=1&_=${Date.now()}`;
             const data = await Api.get(url);
-            if (data && data.ResponseList) {
-                this.apData = data.ResponseList;
+            if (data) {
+                // 先判断 WiFi 总开关状态
+                this.wifiOn = data.wifi_onoff_state === "1";
+                if (data.ResponseList) {
+                    this.apData = data.ResponseList;
+                }
                 this.updateUI();
             }
         } catch (e) {
@@ -29,10 +34,16 @@ const WifiModule = {
         const ap1 = this.apData[1];
         if (!ap0 || !ap1) return;
 
-        // 1. 识别并同步模式
-        if (ap0.AccessPointSwitchStatus === "1") this.currentMode = '2.4';
-        else if (ap1.AccessPointSwitchStatus === "1") this.currentMode = '5';
-        else this.currentMode = 'off';
+        // 1. 先判断 WiFi 总开关状态（wifi_onoff_state）
+        //    AccessPointSwitchStatus 表示"哪个频段是当前档"，不是 WiFi 开关
+        if (this.wifiOn === false) {
+            this.currentMode = 'off';
+        } else {
+            // WiFi 开启时，用 AccessPointSwitchStatus 判断当前频段
+            if (ap0.AccessPointSwitchStatus === "1") this.currentMode = '2.4';
+            else if (ap1.AccessPointSwitchStatus === "1") this.currentMode = '5';
+            else this.currentMode = 'off';
+        }
 
         const modeBtn = document.getElementById('wifi-mode-picker-btn');
         if (modeBtn) {
@@ -41,7 +52,7 @@ const WifiModule = {
             modeBtn.dataset.value = this.currentMode;
         }
 
-        // 2. 填充表单内容
+        // 2. 填充表单内容（WiFi 关闭时也填充，方便用户查看配置）
         const activeAp = (this.currentMode === '5') ? ap1 : ap0;
         this.currentAuth = activeAp.AuthMode;
         this.fillFormFields(activeAp);
@@ -155,15 +166,15 @@ const WifiModule = {
         btn.textContent = '正在应用...';
 
         try {
-            let payload;
+            let params;
             if (mode === 'off') {
-                payload = 'isTest=false&goformId=switchWiFiModule&SwitchOption=0';
+                params = { goformId: 'switchWiFiModule', isTest: 'false', SwitchOption: '0' };
             } else {
                 const chip = mode === '5' ? 'chip2' : 'chip1';
-                payload = `isTest=false&goformId=switchWiFiChip&ChipEnum=${chip}&GuestEnable=0`;
+                params = { goformId: 'switchWiFiChip', isTest: 'false', ChipEnum: chip, GuestEnable: '0' };
             }
 
-            const res = await Api.post('/api/proxy/goform/goform_set_cmd_process', payload);
+            const res = await Api.post('/api/proxy/goform/goform_set_cmd_process', params);
             if (res && res.result === 'success') {
                 await showAlert(`WiFi 已${mode === 'off' ? '关闭' : '切换至 ' + mode + 'GHz'}`, "操作成功");
                 setTimeout(() => location.reload(), 1500);

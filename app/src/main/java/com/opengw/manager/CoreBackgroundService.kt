@@ -121,12 +121,13 @@ class CoreBackgroundService : Service() {
 
             if (isUp) {
                 // USB 已连接 → 关闭 WiFi
-                val payload = "isTest=false&goformId=switchWiFiModule&SwitchOption=0"
+                // dispatch() 会自动添加 isTest=false 和 AD 参数，所以 payload 中不需要 isTest=false
+                val payload = "goformId=switchWiFiModule&SwitchOption=0"
                 bridge.dispatch("/goform/goform_set_cmd_process", "POST", null, payload)
                 Log.i(TAG, "USB 设备连接，已关闭 WiFi")
             } else {
                 // USB 断开 → 打开 WiFi（恢复之前频段）
-                val payload = "isTest=false&goformId=switchWiFiChip&ChipEnum=$currentChip&GuestEnable=0"
+                val payload = "goformId=switchWiFiChip&ChipEnum=$currentChip&GuestEnable=0"
                 bridge.dispatch("/goform/goform_set_cmd_process", "POST", null, payload)
                 Log.i(TAG, "USB 设备断开，已恢复 WiFi ($currentChip)")
             }

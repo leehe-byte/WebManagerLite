@@ -16,6 +16,7 @@ const NetInfoModule = {
             this.checkDualSim();
             this.fetchUsbStatus();
             this.syncNfcStatus();
+            this.syncUsbWifiSwitch();
         }, 100);
     },
 
@@ -296,6 +297,53 @@ const NetInfoModule = {
     },
 
     // NFC
+    // USB 自动关 WiFi 开关
+    async syncUsbWifiSwitch() {
+        try {
+            const config = await Api.get('/api/wifi/auto-switch');
+            const usbSwitch = document.getElementById('ctrl-usbwifi-switch');
+            const usbStatusTxt = document.getElementById('ctrl-usbwifi-status');
+            if (!usbSwitch) return;
+
+            const enabled = config && config.enabled === true;
+            usbSwitch.checked = enabled;
+
+            // 获取 usb0 当前状态
+            const usbStatus = await Api.get('/api/usb0/status');
+            const usbConnected = usbStatus && usbStatus.is_up === true;
+
+            if (usbStatusTxt) {
+                if (enabled) {
+                    usbStatusTxt.textContent = usbConnected ? "已开启 · USB 已连接" : "已开启 · 等待 USB 连接";
+                    usbStatusTxt.style.color = usbConnected ? "var(--success)" : "var(--text-sub)";
+                } else {
+                    usbStatusTxt.textContent = "已关闭";
+                    usbStatusTxt.style.color = "var(--text-sub)";
+                }
+            }
+
+            if (!usbSwitch.dataset.bound) {
+                usbSwitch.dataset.bound = "true";
+                usbSwitch.onchange = async () => {
+                    const targetVal = usbSwitch.checked;
+                    const res = await Api.post('/api/wifi/auto-switch', { enabled: targetVal });
+                    if (res && res.result === 'saved') {
+                        if (usbStatusTxt) {
+                            usbStatusTxt.textContent = targetVal ? "已开启" : "已关闭";
+                            usbStatusTxt.style.color = targetVal ? "var(--success)" : "var(--text-sub)";
+                        }
+                        showAlert(targetVal ? "USB 自动关 WiFi 已开启" : "USB 自动关 WiFi 已关闭");
+                    } else {
+                        showAlert("设置失败");
+                        usbSwitch.checked = !targetVal;
+                    }
+                };
+            }
+        } catch (e) {
+            console.error("Sync USB WiFi switch failed", e);
+        }
+    },
+
     async syncNfcStatus() {
         try {
             const data = await Api.get('/api/proxy/goform/goform_get_cmd_process?isTest=false&cmd=web_wifi_nfc_switch&multi_data=1&_=' + Date.now());

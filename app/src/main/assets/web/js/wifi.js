@@ -141,8 +141,53 @@ const WifiModule = {
         }
     },
 
+    /**
+     * 应用 WiFi 模式（开关/切换频段）
+     * 根据抓包分析：
+     * - 关闭 WiFi: goformId=switchWiFiModule&SwitchOption=0
+     * - 打开 2.4G: goformId=switchWiFiChip&ChipEnum=chip1&GuestEnable=0
+     * - 打开 5G:   goformId=switchWiFiChip&ChipEnum=chip2&GuestEnable=0
+     */
+    async applyMode() {
+        const mode = this.currentMode;
+        const btn = document.getElementById('wifi-save-btn');
+        btn.disabled = true;
+        btn.textContent = '正在应用...';
+
+        try {
+            let payload;
+            if (mode === 'off') {
+                payload = 'isTest=false&goformId=switchWiFiModule&SwitchOption=0';
+            } else {
+                const chip = mode === '5' ? 'chip2' : 'chip1';
+                payload = `isTest=false&goformId=switchWiFiChip&ChipEnum=${chip}&GuestEnable=0`;
+            }
+
+            const res = await Api.post('/api/proxy/goform/goform_set_cmd_process', payload);
+            if (res && res.result === 'success') {
+                await showAlert(`WiFi 已${mode === 'off' ? '关闭' : '切换至 ' + mode + 'GHz'}`, "操作成功");
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                await showAlert("操作失败: " + (res?.result || "未知错误"));
+                btn.disabled = false;
+                btn.textContent = '保存 WiFi 修改';
+                btn.style.background = "var(--primary)";
+            }
+        } catch (e) {
+            await showAlert("网络异常: " + e.message);
+            btn.disabled = false;
+            btn.textContent = '保存 WiFi 修改';
+            btn.style.background = "var(--primary)";
+        }
+    },
+
     async save() {
-        const confirmed = await showConfirm("修改 WiFi 将导致无线连接断开，是否继续？");
+        // 如果当前模式是 off，直接调用 applyMode
+        if (this.currentMode === 'off') {
+            return this.applyMode();
+        }
+
+        const confirmed = await showConfirm("修改 WiFi 参数将导致无线连接短暂断开，是否继续？");
         if (!confirmed) return;
 
         const btn = document.getElementById('wifi-save-btn');

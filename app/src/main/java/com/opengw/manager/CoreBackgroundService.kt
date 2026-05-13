@@ -70,11 +70,69 @@ class CoreBackgroundService : Service() {
         }
     }
 
+    private var lastUsb0Up: Boolean? = null
+    private var wifiAutoSwitchEnabled: Boolean = false
+
     private fun startHeartbeat() {
         scheduler = Executors.newSingleThreadScheduledExecutor()
         scheduler?.scheduleAtFixedRate({
             Log.d(TAG, "💓 心跳检查: 服务存活中，网关状态正常")
+            checkAutoWifiSwitch()
         }, 0, 20, TimeUnit.SECONDS)
+    }
+
+    /**
+     * 检测 usb0 状态并自动开关 WiFi
+     * 当有设备通过 USB (RNDIS/ECM) 连接时关闭 WiFi，断开时重新打开 WiFi
+     */
+    private fun checkAutoWifiSwitch() {
+        try {
+            // 读取配置
+            val configFile = java.io.File("/data/WebManagerLite/auto_wifi_switch.json")
+            if (!configFile.exists()) return
+            val config = org.json.JSONObject(configFile.readText())
+            if (!config.optBoolean("enabled", false)) return
+
+            // 检测 usb0 状态
+            val operstateFile = java.io.File("/sys/class/net/usb0/operstate")
+            val isUp = try {
+                operstateFile.readText().trim() == "up"
+            } catch (e: Exception) { false }
+
+            if (lastUsb0Up == isUp) return // 状态未变化，跳过
+            lastUsb0Up = isUp
+
+            Log.i(TAG, "USB0 状态变化: ${if (isUp) "UP" else "DOWN"}, 自动开关WiFi")
+
+            // 获取当前 WiFi 频段信息，确定用哪个 chip
+            val bridge = BridgeProtocol(this)
+            val infoRes = bridge.dispatch("/goform/goform_get_cmd_process", "GET", "isTest=false&cmd=queryAccessPointInfo&multi_data=1", null)
+            val infoStr = String(infoRes.bytes)
+            val info = org.json.JSONObject(infoStr)
+            val responseList = info.optJSONArray("ResponseList")
+            var currentChip = "chip1" // 默认 2.4G
+            if (responseList != null && responseList.length() >= 2) {
+                val ap0 = responseList.getJSONObject(0)
+                val ap1 = responseList.getJSONObject(1)
+                if (ap1.optString("AccessPointSwitchStatus") == "1") {
+                    currentChip = "chip2" // 5G
+                }
+            }
+
+            if (isUp) {
+                // USB 已连接 → 关闭 WiFi
+                val payload = "isTest=false&goformId=switchWiFiModule&SwitchOption=0"
+                bridge.dispatch("/goform/goform_set_cmd_process", "POST", null, payload)
+                Log.i(TAG, "USB 设备连接，已关闭 WiFi")
+            } else {
+                // USB 断开 → 打开 WiFi（恢复之前频段）
+                val payload = "isTest=false&goformId=switchWiFiChip&ChipEnum=$currentChip&GuestEnable=0"
+                bridge.dispatch("/goform/goform_set_cmd_process", "POST", null, payload)
+                Log.i(TAG, "USB 设备断开，已恢复 WiFi ($currentChip)")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Auto WiFi switch failed", e)
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

@@ -32,6 +32,21 @@
                 </div>
             </div>
 
+            <!-- USB 连接自动关 WiFi -->
+            <div class="flex-between" style="padding: 12px 0; border-top: 1px solid var(--border-color);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 20px;">🔗</span>
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="font-size: 14px; font-weight: 500;">USB 连接自动关 WiFi</span>
+                        <span id="ctrl-usbwifi-status" style="font-size: 11px; color: var(--text-sub);">检测中...</span>
+                    </div>
+                </div>
+                <div class="ios-switch">
+                    <input type="checkbox" id="ctrl-usbwifi-switch">
+                    <label for="ctrl-usbwifi-switch" class="ios-slider"></label>
+                </div>
+            </div>
+
             <!-- NFC 碰一碰开关 -->
             <div id="nfc-section" class="flex-between" style="padding: 12px 0; border-top: 1px solid var(--border-color);">
                 <div style="display: flex; align-items: center; gap: 12px;">

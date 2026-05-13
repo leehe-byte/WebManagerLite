@@ -78,7 +78,7 @@ class CoreBackgroundService : Service() {
         scheduler?.scheduleAtFixedRate({
             Log.d(TAG, "💓 心跳检查: 服务存活中，网关状态正常")
             checkAutoWifiSwitch()
-        }, 0, 20, TimeUnit.SECONDS)
+        }, 0, 2, TimeUnit.SECONDS)
     }
 
     /**

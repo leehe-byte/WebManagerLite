@@ -87,8 +87,8 @@ class CoreBackgroundService : Service() {
      */
     private fun checkAutoWifiSwitch() {
         try {
-            // 读取配置
-            val configFile = java.io.File("/data/WebManagerLite/auto_wifi_switch.json")
+            // 读取配置（使用应用私有目录）
+            val configFile = java.io.File(this.filesDir, "auto_wifi_switch.json")
             if (!configFile.exists()) return
             val config = org.json.JSONObject(configFile.readText())
             if (!config.optBoolean("enabled", false)) return

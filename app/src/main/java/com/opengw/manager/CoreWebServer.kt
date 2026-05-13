@@ -301,7 +301,7 @@ class CoreWebServer(private val context: Context, private val port: Int) {
                 get("/api/wifi/auto-switch") {
                     val config = withContext(Dispatchers.IO) {
                         try {
-                            val f = java.io.File("/data/WebManagerLite/auto_wifi_switch.json")
+                            val f = java.io.File(this@CoreWebServer.context.filesDir, "auto_wifi_switch.json")
                             if (f.exists()) f.readText() else "{\"enabled\":false}"
                         } catch (e: Exception) { "{\"enabled\":false}" }
                     }
@@ -313,8 +313,9 @@ class CoreWebServer(private val context: Context, private val port: Int) {
                     val enabled = postData.optBoolean("enabled", false)
                     withContext(Dispatchers.IO) {
                         try {
-                            java.io.File("/data/WebManagerLite/auto_wifi_switch.json").parentFile?.mkdirs()
-                            java.io.File("/data/WebManagerLite/auto_wifi_switch.json").writeText("{\"enabled\":$enabled}")
+                            val f = java.io.File(this@CoreWebServer.context.filesDir, "auto_wifi_switch.json")
+                            f.parentFile?.mkdirs()
+                            f.writeText("{\"enabled\":$enabled}")
                         } catch (e: Exception) { Log.e("AUTO_WIFI", "Save config failed", e) }
                     }
                     call.respondText("{\"result\":\"saved\"}", ContentType.Application.Json)

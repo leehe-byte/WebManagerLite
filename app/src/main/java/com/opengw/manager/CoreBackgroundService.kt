@@ -19,7 +19,8 @@ class CoreBackgroundService : Service() {
     
     private var webServer: CoreWebServer? = null
     private var wakeLockManager: WakeLockManager? = null
-    private var scheduler: ScheduledExecutorService? = null
+    private var heartbeatScheduler: ScheduledExecutorService? = null
+    private var usbDetectScheduler: ScheduledExecutorService? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -30,6 +31,7 @@ class CoreBackgroundService : Service() {
         startForegroundService()
         startWebServer()
         startHeartbeat()
+        startUsbDetect()
     }
 
     private fun startForegroundService() {
@@ -74,9 +76,15 @@ class CoreBackgroundService : Service() {
     private var wifiAutoSwitchEnabled: Boolean = false
 
     private fun startHeartbeat() {
-        scheduler = Executors.newSingleThreadScheduledExecutor()
-        scheduler?.scheduleAtFixedRate({
+        heartbeatScheduler = Executors.newSingleThreadScheduledExecutor()
+        heartbeatScheduler?.scheduleAtFixedRate({
             Log.d(TAG, "💓 心跳检查: 服务存活中，网关状态正常")
+        }, 0, 30, TimeUnit.SECONDS)
+    }
+
+    private fun startUsbDetect() {
+        usbDetectScheduler = Executors.newSingleThreadScheduledExecutor()
+        usbDetectScheduler?.scheduleAtFixedRate({
             checkAutoWifiSwitch()
         }, 0, 2, TimeUnit.SECONDS)
     }
@@ -145,7 +153,8 @@ class CoreBackgroundService : Service() {
 
     override fun onDestroy() {
         Log.w(TAG, "服务正在销毁，尝试释放资源")
-        scheduler?.shutdownNow()
+        heartbeatScheduler?.shutdownNow()
+        usbDetectScheduler?.shutdownNow()
         webServer?.stop()
         wakeLockManager?.release()
         super.onDestroy()

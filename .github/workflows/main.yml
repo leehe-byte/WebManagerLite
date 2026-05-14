@@ -27,24 +27,20 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Decode Keystore
-        run: |
-          echo "${{ secrets.KEYSTORE_FILE }}" | base64 -d > app/keystore.jks
-
-      - name: Create signing.properties
-        run: |
-          cat > app/signing.properties << EOF
-          storeFile=keystore.jks
-          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
-          keyAlias=${{ secrets.KEY_ALIAS }}
-          keyPassword=${{ secrets.KEY_PASSWORD }}
-          EOF
-
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
       - name: Build Release APK
         run: ./gradlew assembleRelease
+
+      - uses: r0adkll/sign-android-release@v1
+        id: sign_app
+        with:
+          releaseDirectory: app/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.KEYSTORE_FILE }}
+          alias: ${{ secrets.KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
 
       - name: Prepare Artifacts
         run: |
@@ -73,13 +69,6 @@ jobs:
           tag_name: ${{ github.ref_name }}
           body: |
             ## 🚀 OpenGW (WebManagerLite) ${{ env.VERSION }}
-            
-            本次更新摘要：
-            - 初步适配F50
-            - 全量适配黑暗模式
-            - 新增 Samba 共享与 NFC 控制
-            - 优化手机端布局
-            
             自动编译结果包含：
             - `${{ env.FINAL_FILENAME }}`
           files: final_artifacts/*.apk

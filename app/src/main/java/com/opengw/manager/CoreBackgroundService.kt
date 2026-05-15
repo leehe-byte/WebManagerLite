@@ -74,6 +74,7 @@ class CoreBackgroundService : Service() {
 
     private var lastUsb0Up: Boolean? = null
     private var wifiAutoSwitchEnabled: Boolean = false
+    private var bridgeProtocol: BridgeProtocol? = null
 
     private fun startHeartbeat() {
         heartbeatScheduler = Executors.newSingleThreadScheduledExecutor()
@@ -122,9 +123,15 @@ class CoreBackgroundService : Service() {
 
             Log.i(TAG, "[USB_WIFI] USB0 状态变化: ${if (isUp) "UP" else "DOWN"}, 开始处理...")
 
+            // 使用单例 BridgeProtocol，避免每次新建实例导致 Cookie/密码丢失
+            if (bridgeProtocol == null) {
+                bridgeProtocol = BridgeProtocol(this)
+                Log.d(TAG, "[USB_WIFI] 创建 BridgeProtocol 单例 (hash=${System.identityHashCode(bridgeProtocol)})")
+            }
+            val bridge = bridgeProtocol!!
+            Log.d(TAG, "[USB_WIFI] 使用 BridgeProtocol 单例 (hash=${System.identityHashCode(bridge)})")
+
             // 获取当前 WiFi 频段信息，确定用哪个 chip
-            Log.d(TAG, "[USB_WIFI] 创建 BridgeProtocol 实例 (hash=${System.identityHashCode(BridgeProtocol(this))})")
-            val bridge = BridgeProtocol(this)
             Log.d(TAG, "[USB_WIFI] 开始获取 WiFi 频段信息...")
             val infoRes = bridge.dispatch("/goform/goform_get_cmd_process", "GET", "isTest=false&cmd=queryAccessPointInfo&multi_data=1", null)
             val infoStr = String(infoRes.bytes)
@@ -151,6 +158,14 @@ class CoreBackgroundService : Service() {
                 val res = bridge.dispatch("/goform/goform_set_cmd_process", "POST", null, payload)
                 val resStr = String(res.bytes)
                 Log.i(TAG, "[USB_WIFI] <<< 关闭 WiFi 响应: ${resStr.take(200)}")
+                // 如果响应为空，可能是会话问题，再试一次
+                if (resStr.isBlank()) {
+                    Log.w(TAG, "[USB_WIFI] 关闭 WiFi 响应为空，1秒后重试...")
+                    Thread.sleep(1000)
+                    val retryRes = bridge.dispatch("/goform/goform_set_cmd_process", "POST", null, payload)
+                    val retryStr = String(retryRes.bytes)
+                    Log.i(TAG, "[USB_WIFI] <<< 重试关闭 WiFi 响应: ${retryStr.take(200)}")
+                }
                 Log.i(TAG, "[USB_WIFI] USB 设备连接，已关闭 WiFi")
             } else {
                 // USB 断开 → 打开 WiFi（恢复之前频段）
@@ -159,6 +174,14 @@ class CoreBackgroundService : Service() {
                 val res = bridge.dispatch("/goform/goform_set_cmd_process", "POST", null, payload)
                 val resStr = String(res.bytes)
                 Log.i(TAG, "[USB_WIFI] <<< 开启 WiFi 响应: ${resStr.take(200)}")
+                // 如果响应为空，可能是会话问题，再试一次
+                if (resStr.isBlank()) {
+                    Log.w(TAG, "[USB_WIFI] 开启 WiFi 响应为空，1秒后重试...")
+                    Thread.sleep(1000)
+                    val retryRes = bridge.dispatch("/goform/goform_set_cmd_process", "POST", null, payload)
+                    val retryStr = String(retryRes.bytes)
+                    Log.i(TAG, "[USB_WIFI] <<< 重试开启 WiFi 响应: ${retryStr.take(200)}")
+                }
                 Log.i(TAG, "[USB_WIFI] USB 设备断开，已恢复 WiFi ($currentChip)")
             }
         } catch (e: Exception) {

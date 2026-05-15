@@ -35,10 +35,12 @@ class BridgeProtocol(private val context: Context) {
         .readTimeout(5, TimeUnit.SECONDS)
         .build()
 
-    private var activeCookie: String? = null
-    private var waVer: String = ""
-    private var crVer: String = ""
-    private var encryptedPassword: String? = null
+    companion object {
+        private var activeCookie: String? = null
+        private var waVer: String = ""
+        private var crVer: String = ""
+        private var encryptedPassword: String? = null
+    }
     private val KEYSTORE_ALIAS = "bridge_protocol_pwd_key"
 
     private fun getGatewayIp(): String {

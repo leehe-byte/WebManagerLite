@@ -93,21 +93,29 @@ class BridgeProtocol(private val context: Context) {
     fun dispatch(path: String, method: String, query: String?, postData: String?): ProxyResponse {
         return try {
             if (method == "POST" && postData != null) {
-                if (waVer.isEmpty() || crVer.isEmpty()) loadDeviceMeta()
+                Log.d(TAG, "[DISPATCH] POST $path | postData=$postData | waVer=$waVer crVer=$crVer | cookie=${activeCookie?.take(20)}...")
+                if (waVer.isEmpty() || crVer.isEmpty()) {
+                    Log.d(TAG, "[DISPATCH] waVer/crVer 为空，调用 loadDeviceMeta()")
+                    loadDeviceMeta()
+                    Log.d(TAG, "[DISPATCH] loadDeviceMeta 后: waVer=$waVer crVer=$crVer")
+                }
                 var rdRes = fetch("/goform/goform_get_cmd_process?isTest=false&cmd=RD&_=${System.currentTimeMillis()}")
                 var rdStr = String(rdRes.bytes)
+                Log.d(TAG, "[DISPATCH] 获取 RD 响应: ${rdStr.take(100)}")
                 // 检测会话是否过期（RD 返回空或登录页面）
                 if (rdStr.isBlank() || rdStr.contains("login") || rdStr.contains("Login")) {
-                    Log.w(TAG, "Session expired, re-logging in...")
+                    Log.w(TAG, "[DISPATCH] Session expired, re-logging in...")
                     val savedPwd = decryptPassword()
                     if (savedPwd != null) {
                         val loginResult = doLogin(savedPwd)
+                        Log.d(TAG, "[DISPATCH] 重登录结果: $loginResult, cookie=${activeCookie?.take(20)}...")
                         if (loginResult != "SUCCESS") {
                             return ProxyResponse("{\"error\":\"session_expired\",\"msg\":\"re-login failed: $loginResult\"}".toByteArray(), "application/json")
                         }
                         // 重新获取 RD
                         rdRes = fetch("/goform/goform_get_cmd_process?isTest=false&cmd=RD&_=${System.currentTimeMillis()}")
                         rdStr = String(rdRes.bytes)
+                        Log.d(TAG, "[DISPATCH] 重登录后 RD 响应: ${rdStr.take(100)}")
                         if (rdStr.isBlank() || rdStr.contains("login")) {
                             return ProxyResponse("{\"error\":\"session_expired\",\"msg\":\"RD still empty after re-login\"}".toByteArray(), "application/json")
                         }
@@ -115,6 +123,7 @@ class BridgeProtocol(private val context: Context) {
                 }
                 val rd = JSONObject(rdStr).optString("RD")
                 val ad = sha256(sha256(waVer + crVer) + rd)
+                Log.d(TAG, "[DISPATCH] RD=$rd, AD=$ad")
 
                 val paramList = mutableListOf<String>()
                 paramList.add("isTest=false") 
@@ -137,19 +146,26 @@ class BridgeProtocol(private val context: Context) {
                     paramList.add(postData)
                 }
                 paramList.add("AD=$ad")
-                val response = post(path, paramList.joinToString("&"))
+                val finalBody = paramList.joinToString("&")
+                Log.d(TAG, "[DISPATCH] >>> 发送 POST, body=$finalBody")
+                val response = post(path, finalBody)
                 // 检测 POST 响应是否也是过期（空或登录页面）
                 val respStr = String(response.bytes)
+                Log.d(TAG, "[DISPATCH] <<< POST 响应: ${respStr.take(200)}")
                 if (respStr.isBlank() || (respStr.contains("login") && respStr.contains("password"))) {
-                    Log.w(TAG, "POST response indicates session expired, retrying with re-login...")
+                    Log.w(TAG, "[DISPATCH] POST response indicates session expired, retrying with re-login...")
                     val savedPwd = decryptPassword()
                     if (savedPwd != null) {
                         val loginResult = doLogin(savedPwd)
+                        Log.d(TAG, "[DISPATCH] 重登录结果: $loginResult, cookie=${activeCookie?.take(20)}...")
                         if (loginResult == "SUCCESS") {
                             // 重新获取 RD 和 AD
                             val rdRes3 = fetch("/goform/goform_get_cmd_process?isTest=false&cmd=RD&_=${System.currentTimeMillis()}")
-                            val rd3 = JSONObject(String(rdRes3.bytes)).optString("RD")
+                            val rdStr3 = String(rdRes3.bytes)
+                            Log.d(TAG, "[DISPATCH] 重试获取 RD 响应: ${rdStr3.take(100)}")
+                            val rd3 = JSONObject(rdStr3).optString("RD")
                             val ad3 = sha256(sha256(waVer + crVer) + rd3)
+                            Log.d(TAG, "[DISPATCH] 重试: RD=$rd3, AD=$ad3, waVer=$waVer, crVer=$crVer")
                             val paramList2 = mutableListOf<String>()
                             paramList2.add("isTest=false")
                             if (postData.startsWith("postData=")) {
@@ -169,16 +185,25 @@ class BridgeProtocol(private val context: Context) {
                                 paramList2.add(postData)
                             }
                             paramList2.add("AD=$ad3")
-                            return post(path, paramList2.joinToString("&"))
+                            val retryBody = paramList2.joinToString("&")
+                            Log.d(TAG, "[DISPATCH] >>> 重试发送 POST, body=$retryBody")
+                            val retryRes = post(path, retryBody)
+                            val retryStr = String(retryRes.bytes)
+                            Log.i(TAG, "[DISPATCH] <<< 重试 POST 响应: ${retryStr.take(200)}")
+                            return retryRes
                         }
                     }
                 }
                 return response
             } else {
                 val fullPath = if (!query.isNullOrEmpty()) "$path?$query" else path
-                fetch(fullPath)
+                Log.d(TAG, "[DISPATCH] GET $fullPath | cookie=${activeCookie?.take(20)}...")
+                val res = fetch(fullPath)
+                Log.d(TAG, "[DISPATCH] GET 响应: ${String(res.bytes).take(200)}")
+                res
             }
         } catch (e: Exception) {
+            Log.e(TAG, "[DISPATCH] 异常: ${e.message}", e)
             ProxyResponse("{\"error\":\"${e.message}\"}".toByteArray(), "application/json")
         }
     }

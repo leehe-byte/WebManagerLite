@@ -97,50 +97,72 @@ class CoreBackgroundService : Service() {
         try {
             // 读取配置（使用应用私有目录）
             val configFile = java.io.File(this.filesDir, "auto_wifi_switch.json")
-            if (!configFile.exists()) return
+            if (!configFile.exists()) {
+                Log.d(TAG, "[USB_WIFI] 配置文件不存在，跳过")
+                return
+            }
             val config = org.json.JSONObject(configFile.readText())
-            if (!config.optBoolean("enabled", false)) return
+            if (!config.optBoolean("enabled", false)) {
+                Log.d(TAG, "[USB_WIFI] 功能未开启，跳过")
+                return
+            }
 
             // 检测 usb0 状态
             val operstateFile = java.io.File("/sys/class/net/usb0/operstate")
             val isUp = try {
                 operstateFile.readText().trim() == "up"
-            } catch (e: Exception) { false }
+            } catch (e: Exception) {
+                Log.d(TAG, "[USB_WIFI] 读取 usb0 状态失败: ${e.message}")
+                false
+            }
 
+            Log.d(TAG, "[USB_WIFI] 当前 usb0=${if (isUp) "UP" else "DOWN"}, lastUsb0Up=$lastUsb0Up")
             if (lastUsb0Up == isUp) return // 状态未变化，跳过
             lastUsb0Up = isUp
 
-            Log.i(TAG, "USB0 状态变化: ${if (isUp) "UP" else "DOWN"}, 自动开关WiFi")
+            Log.i(TAG, "[USB_WIFI] USB0 状态变化: ${if (isUp) "UP" else "DOWN"}, 开始处理...")
 
             // 获取当前 WiFi 频段信息，确定用哪个 chip
+            Log.d(TAG, "[USB_WIFI] 创建 BridgeProtocol 实例 (hash=${System.identityHashCode(BridgeProtocol(this))})")
             val bridge = BridgeProtocol(this)
+            Log.d(TAG, "[USB_WIFI] 开始获取 WiFi 频段信息...")
             val infoRes = bridge.dispatch("/goform/goform_get_cmd_process", "GET", "isTest=false&cmd=queryAccessPointInfo&multi_data=1", null)
             val infoStr = String(infoRes.bytes)
+            Log.d(TAG, "[USB_WIFI] WiFi 信息响应: ${infoStr.take(200)}")
             val info = org.json.JSONObject(infoStr)
             val responseList = info.optJSONArray("ResponseList")
             var currentChip = "chip1" // 默认 2.4G
             if (responseList != null && responseList.length() >= 2) {
                 val ap0 = responseList.getJSONObject(0)
                 val ap1 = responseList.getJSONObject(1)
-                if (ap1.optString("AccessPointSwitchStatus") == "1") {
+                val ap0Status = ap0.optString("AccessPointSwitchStatus")
+                val ap1Status = ap1.optString("AccessPointSwitchStatus")
+                Log.d(TAG, "[USB_WIFI] AP0(2.4G) status=$ap0Status, AP1(5G) status=$ap1Status")
+                if (ap1Status == "1") {
                     currentChip = "chip2" // 5G
                 }
             }
+            Log.d(TAG, "[USB_WIFI] 当前频段: $currentChip")
 
             if (isUp) {
                 // USB 已连接 → 关闭 WiFi
-                // dispatch() 会自动添加 isTest=false 和 AD 参数，所以 payload 中不需要 isTest=false
                 val payload = "goformId=switchWiFiModule&SwitchOption=0"
-                bridge.dispatch("/goform/goform_set_cmd_process", "POST", null, payload)
-                Log.i(TAG, "USB 设备连接，已关闭 WiFi")
+                Log.d(TAG, "[USB_WIFI] >>> 发送关闭 WiFi 请求, payload=$payload")
+                val res = bridge.dispatch("/goform/goform_set_cmd_process", "POST", null, payload)
+                val resStr = String(res.bytes)
+                Log.i(TAG, "[USB_WIFI] <<< 关闭 WiFi 响应: ${resStr.take(200)}")
+                Log.i(TAG, "[USB_WIFI] USB 设备连接，已关闭 WiFi")
             } else {
                 // USB 断开 → 打开 WiFi（恢复之前频段）
                 val payload = "goformId=switchWiFiChip&ChipEnum=$currentChip&GuestEnable=0"
-                bridge.dispatch("/goform/goform_set_cmd_process", "POST", null, payload)
-                Log.i(TAG, "USB 设备断开，已恢复 WiFi ($currentChip)")
+                Log.d(TAG, "[USB_WIFI] >>> 发送开启 WiFi 请求, payload=$payload")
+                val res = bridge.dispatch("/goform/goform_set_cmd_process", "POST", null, payload)
+                val resStr = String(res.bytes)
+                Log.i(TAG, "[USB_WIFI] <<< 开启 WiFi 响应: ${resStr.take(200)}")
+                Log.i(TAG, "[USB_WIFI] USB 设备断开，已恢复 WiFi ($currentChip)")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Auto WiFi switch failed", e)
+            Log.e(TAG, "[USB_WIFI] Auto WiFi switch failed", e)
         }
     }
 

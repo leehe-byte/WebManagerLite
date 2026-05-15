@@ -8,6 +8,8 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
@@ -103,10 +105,9 @@ class CoreBackgroundService : Service() {
             }
             val jsonBody = org.json.JSONObject(params).toString()
             val body = "postData=${java.net.URLEncoder.encode(jsonBody, "UTF-8")}"
-            val mediaType = okhttp3.MediaType.parse("application/x-www-form-urlencoded")
             val request = okhttp3.Request.Builder()
                 .url("http://127.0.0.1:8000/api/proxy/goform/goform_set_cmd_process")
-                .post(okhttp3.RequestBody.create(mediaType, body))
+                .post(body.toRequestBody("application/x-www-form-urlencoded".toMediaType()))
                 .build()
             val response = httpClient!!.newCall(request).execute()
             return response.body?.string() ?: ""

@@ -73,7 +73,7 @@ class CoreBackgroundService : Service() {
     }
 
     private var lastUsb0Up: Boolean? = null
-    private var bridgeProtocol: BridgeProtocol? = null
+    private var httpClient: okhttp3.OkHttpClient? = null
 
     private fun startHeartbeat() {
         heartbeatScheduler = Executors.newSingleThreadScheduledExecutor()
@@ -87,6 +87,53 @@ class CoreBackgroundService : Service() {
         usbDetectScheduler?.scheduleAtFixedRate({
             checkUsbAndSwitchWifi()
         }, 0, 2, TimeUnit.SECONDS)
+    }
+
+    /**
+     * 通过 HTTP 请求 localhost:8000/api/proxy/... 发送请求
+     * 完全复用前端路径，避免直接调用 BridgeProtocol 带来的会话问题
+     */
+    private fun proxyPost(path: String, params: Map<String, String>): String {
+        try {
+            if (httpClient == null) {
+                httpClient = okhttp3.OkHttpClient.Builder()
+                    .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                    .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                    .build()
+            }
+            val jsonBody = org.json.JSONObject(params).toString()
+            val body = "postData=${java.net.URLEncoder.encode(jsonBody, "UTF-8")}"
+            val mediaType = okhttp3.MediaType.parse("application/x-www-form-urlencoded")
+            val request = okhttp3.Request.Builder()
+                .url("http://127.0.0.1:8000/api/proxy/goform/goform_set_cmd_process")
+                .post(okhttp3.RequestBody.create(mediaType, body))
+                .build()
+            val response = httpClient!!.newCall(request).execute()
+            return response.body?.string() ?: ""
+        } catch (e: Exception) {
+            Log.e(TAG, "[USB_WIFI] HTTP 请求失败", e)
+            return ""
+        }
+    }
+
+    private fun proxyGet(path: String): String {
+        try {
+            if (httpClient == null) {
+                httpClient = okhttp3.OkHttpClient.Builder()
+                    .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                    .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                    .build()
+            }
+            val request = okhttp3.Request.Builder()
+                .url("http://127.0.0.1:8000/api/proxy$path")
+                .get()
+                .build()
+            val response = httpClient!!.newCall(request).execute()
+            return response.body?.string() ?: ""
+        } catch (e: Exception) {
+            Log.e(TAG, "[USB_WIFI] HTTP 请求失败", e)
+            return ""
+        }
     }
 
     /**
@@ -113,22 +160,20 @@ class CoreBackgroundService : Service() {
 
             Log.i(TAG, "[USB_WIFI] usb0 状态变化: ${if (isUp) "UP" else "DOWN"}")
 
-            // 使用单例 BridgeProtocol
-            if (bridgeProtocol == null) {
-                bridgeProtocol = BridgeProtocol(this)
-            }
-            val bridge = bridgeProtocol!!
-
             if (isUp) {
                 // usb0 UP → 关闭 WiFi（仿照 wifi.js 中 SwitchOption=0）
-                Log.d(TAG, "[USB_WIFI] >>> 发送关闭 WiFi: goformId=switchWiFiModule&SwitchOption=0")
-                val res = bridge.dispatch("/goform/goform_set_cmd_process", "POST", null, "goformId=switchWiFiModule&SwitchOption=0")
-                Log.i(TAG, "[USB_WIFI] <<< 关闭 WiFi 响应: ${String(res.bytes).take(200)}")
+                Log.d(TAG, "[USB_WIFI] >>> 发送关闭 WiFi")
+                val res = proxyPost("/goform/goform_set_cmd_process", mapOf(
+                    "goformId" to "switchWiFiModule",
+                    "isTest" to "false",
+                    "SwitchOption" to "0"
+                ))
+                Log.i(TAG, "[USB_WIFI] <<< 关闭 WiFi 响应: ${res.take(200)}")
             } else {
                 // usb0 DOWN → 查询当前哪个 AP 开着，恢复对应频段
                 Log.d(TAG, "[USB_WIFI] >>> 查询 WiFi 频段信息...")
-                val infoRes = bridge.dispatch("/goform/goform_get_cmd_process", "GET", "isTest=false&cmd=queryAccessPointInfo&multi_data=1", null)
-                val infoStr = String(infoRes.bytes)
+                val infoStr = proxyGet("/goform/goform_get_cmd_process?isTest=false&cmd=queryAccessPointInfo&multi_data=1")
+                Log.d(TAG, "[USB_WIFI] WiFi 信息响应: ${infoStr.take(200)}")
                 val info = org.json.JSONObject(infoStr)
                 val list = info.optJSONArray("ResponseList")
                 var chip = "chip1" // 默认 2.4G
@@ -140,9 +185,14 @@ class CoreBackgroundService : Service() {
                     Log.d(TAG, "[USB_WIFI] AP0(2.4G) status=$ap0Status, AP1(5G) status=$ap1Status")
                     if (ap1Status == "1") chip = "chip2"
                 }
-                Log.d(TAG, "[USB_WIFI] >>> 发送开启 WiFi: goformId=switchWiFiChip&ChipEnum=$chip&GuestEnable=0")
-                val res = bridge.dispatch("/goform/goform_set_cmd_process", "POST", null, "goformId=switchWiFiChip&ChipEnum=$chip&GuestEnable=0")
-                Log.i(TAG, "[USB_WIFI] <<< 开启 WiFi 响应: ${String(res.bytes).take(200)}")
+                Log.d(TAG, "[USB_WIFI] >>> 发送开启 WiFi: chip=$chip")
+                val res = proxyPost("/goform/goform_set_cmd_process", mapOf(
+                    "goformId" to "switchWiFiChip",
+                    "isTest" to "false",
+                    "ChipEnum" to chip,
+                    "GuestEnable" to "0"
+                ))
+                Log.i(TAG, "[USB_WIFI] <<< 开启 WiFi 响应: ${res.take(200)}")
             }
         } catch (e: Exception) {
             Log.e(TAG, "[USB_WIFI] 异常", e)

@@ -83,7 +83,10 @@ class BridgeProtocol(private val context: Context) {
             val loginStr = String(loginRes.bytes)
             if (loginStr.contains("\"result\":0") || loginStr.contains("\"result\":\"0\"")) {
                 loadDeviceMeta()
-                encryptedPassword = encryptPassword(password)
+                // 尝试用 KeyStore 加密保存密码，如果失败则用 Base64 编码作为 fallback
+                val encrypted = encryptPassword(password)
+                encryptedPassword = encrypted ?: Base64.encodeToString(password.toByteArray(), Base64.NO_WRAP)
+                Log.d(TAG, "[LOGIN] 登录成功, 密码已保存 (encrypted=${encrypted != null})")
                 return "SUCCESS"
             }
             return "AUTH_FAILED: $loginStr"
@@ -290,7 +293,8 @@ class BridgeProtocol(private val context: Context) {
      */
     private fun decryptPassword(): String? {
         val encrypted = encryptedPassword ?: return null
-        return try {
+        // 先尝试用 KeyStore AES-GCM 解密
+        try {
             val secretKey = getOrCreateKey()
             val combined = Base64.decode(encrypted, Base64.NO_WRAP)
             val cipher = Cipher.getInstance("AES/GCM/NoPadding")
@@ -299,9 +303,15 @@ class BridgeProtocol(private val context: Context) {
             val spec = GCMParameterSpec(128, iv)
             cipher.init(Cipher.DECRYPT_MODE, secretKey, spec)
             val decrypted = cipher.doFinal(encryptedData)
-            String(decrypted, Charsets.UTF_8)
+            return String(decrypted, Charsets.UTF_8)
         } catch (e: Exception) {
-            Log.e(TAG, "Decrypt password failed", e)
+            Log.d(TAG, "[DECRYPT] KeyStore 解密失败，尝试 Base64 fallback: ${e.message}")
+        }
+        // fallback: 如果 KeyStore 不可用，尝试用 Base64 解码（兼容之前用 Base64 保存的密码）
+        return try {
+            String(Base64.decode(encrypted, Base64.NO_WRAP), Charsets.UTF_8)
+        } catch (e: Exception) {
+            Log.e(TAG, "[DECRYPT] Base64 fallback 也失败", e)
             null
         }
     }

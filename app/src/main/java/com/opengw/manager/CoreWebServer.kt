@@ -273,7 +273,16 @@ class CoreWebServer(private val context: Context, private val port: Int) {
                 post("/api/auth/login") {
                     val pass = call.request.queryParameters["password"] ?: ""
                     val result = withContext(Dispatchers.IO) { bridge.doLogin(pass) }
-                    call.respondText(if (result == "SUCCESS") "{\"result\":0, \"token\":\"session-ok\"}" else "{\"result\":-1, \"msg\":\"$result\"}", ContentType.Application.Json)
+                    if (result == "SUCCESS") {
+                        // 保存密码到 SharedPreferences，供后台服务自动开关 WiFi 使用
+                        withContext(Dispatchers.IO) {
+                            this@CoreWebServer.context.getSharedPreferences("bridge_config", Context.MODE_PRIVATE)
+                                .edit().putString("password", pass).apply()
+                        }
+                        call.respondText("{\"result\":0, \"token\":\"session-ok\"}", ContentType.Application.Json)
+                    } else {
+                        call.respondText("{\"result\":-1, \"msg\":\"$result\"}", ContentType.Application.Json)
+                    }
                 }
 
                 // ===== USB0 状态检测 & WiFi 自动开关 =====

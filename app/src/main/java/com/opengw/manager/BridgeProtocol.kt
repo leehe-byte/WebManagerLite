@@ -40,6 +40,11 @@ class BridgeProtocol(private val context: Context) {
         private var waVer: String = ""
         private var crVer: String = ""
         private var encryptedPassword: String? = null
+
+        /**
+         * 检查是否已保存密码（用于外部判断是否需要主动登录）
+         */
+        fun getEncryptedPassword(): String? = encryptedPassword
     }
     private val KEYSTORE_ALIAS = "bridge_protocol_pwd_key"
 

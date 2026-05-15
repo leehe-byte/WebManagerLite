@@ -131,6 +131,20 @@ class CoreBackgroundService : Service() {
             val bridge = bridgeProtocol!!
             Log.d(TAG, "[USB_WIFI] 使用 BridgeProtocol 单例 (hash=${System.identityHashCode(bridge)})")
 
+            // 确保已登录：如果 encryptedPassword 为 null，说明从未登录过，先登录一次
+            // 密码从 SharedPreferences 中读取（前端登录时保存的）
+            if (BridgeProtocol.getEncryptedPassword() == null) {
+                Log.d(TAG, "[USB_WIFI] encryptedPassword 为空，尝试从 SharedPreferences 读取密码并登录...")
+                val sp = getSharedPreferences("bridge_config", Context.MODE_PRIVATE)
+                val savedPwd = sp.getString("password", null)
+                if (savedPwd != null) {
+                    val loginResult = bridge.doLogin(savedPwd)
+                    Log.d(TAG, "[USB_WIFI] 主动登录结果: $loginResult")
+                } else {
+                    Log.w(TAG, "[USB_WIFI] SharedPreferences 中也没有密码，跳过登录")
+                }
+            }
+
             // 获取当前 WiFi 频段信息，确定用哪个 chip
             Log.d(TAG, "[USB_WIFI] 开始获取 WiFi 频段信息...")
             val infoRes = bridge.dispatch("/goform/goform_get_cmd_process", "GET", "isTest=false&cmd=queryAccessPointInfo&multi_data=1", null)

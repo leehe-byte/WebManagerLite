@@ -15,6 +15,7 @@ const NetInfoModule = {
             this.checkFeatures();
             this.checkDualSim();
             this.fetchUsbStatus();
+            this.syncUsbWifiSwitch();
             this.syncNfcStatus();
         }, 100);
     },
@@ -292,6 +293,44 @@ const NetInfoModule = {
                 await Api.post('/api/proxy/goform/goform_set_cmd_process', { isTest: 'false', goformId: 'REBOOT_DEVICE' });
                 showAlert("设置成功，设备正在重启...", "成功");
             }
+        }
+    },
+
+    // USB 自动关 WiFi 开关
+    async syncUsbWifiSwitch() {
+        try {
+            const usbSwitch = document.getElementById('ctrl-usbwifi-switch');
+            const usbStatusTxt = document.getElementById('ctrl-usbwifi-status');
+            if (!usbSwitch) return;
+
+            // 检测 usb0 当前状态
+            const usbStatus = await Api.get('/api/usb0/status');
+            const usbConnected = usbStatus && usbStatus.is_up === true;
+
+            if (usbStatusTxt) {
+                usbStatusTxt.textContent = usbConnected ? "USB 已连接" : "等待 USB 连接";
+                usbStatusTxt.style.color = usbConnected ? "var(--success)" : "var(--text-sub)";
+            }
+
+            if (!usbSwitch.dataset.bound) {
+                usbSwitch.dataset.bound = "true";
+                usbSwitch.onchange = async () => {
+                    const targetVal = usbSwitch.checked;
+                    const res = await Api.post('/api/wifi/auto-switch', { enabled: targetVal });
+                    if (res && res.result === 'saved') {
+                        if (usbStatusTxt) {
+                            usbStatusTxt.textContent = targetVal ? "已开启" : "已关闭";
+                            usbStatusTxt.style.color = targetVal ? "var(--success)" : "var(--text-sub)";
+                        }
+                        showAlert(targetVal ? "USB 自动关 WiFi 已开启" : "USB 自动关 WiFi 已关闭");
+                    } else {
+                        showAlert("设置失败");
+                        usbSwitch.checked = !targetVal;
+                    }
+                };
+            }
+        } catch (e) {
+            console.error("Sync USB WiFi switch failed", e);
         }
     },
 

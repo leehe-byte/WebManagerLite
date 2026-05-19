@@ -270,6 +270,51 @@ class CoreWebServer(private val context: Context, private val port: Int) {
                 post("/api/ttyd/start") { call.respondText(JSONObject().apply { put("result", ttyd.start()) }.toString(), ContentType.Application.Json) }
                 post("/api/ttyd/stop") { call.respondText(JSONObject().apply { put("result", ttyd.stop()) }.toString(), ContentType.Application.Json) }
                 
+                // ===== USB0 状态检测 & WiFi 自动开关 =====
+                get("/api/usb0/status") {
+                    val result = withContext(Dispatchers.IO) {
+                        try {
+                            val operstate = java.io.File("/sys/class/net/usb0/operstate").readText().trim()
+                            JSONObject().apply {
+                                put("present", true)
+                                put("operstate", operstate)
+                                put("is_up", operstate == "up")
+                            }
+                        } catch (e: Exception) {
+                            JSONObject().apply {
+                                put("present", false)
+                                put("operstate", "down")
+                                put("is_up", false)
+                            }
+                        }
+                    }
+                    call.respondText(result.toString(), ContentType.Application.Json)
+                }
+
+                // 保存/读取 WiFi 自动开关配置
+                get("/api/wifi/auto-switch") {
+                    val config = withContext(Dispatchers.IO) {
+                        try {
+                            val f = java.io.File(this@CoreWebServer.context.filesDir, "auto_wifi_switch.json")
+                            if (f.exists()) f.readText() else "{\"enabled\":false}"
+                        } catch (e: Exception) { "{\"enabled\":false}" }
+                    }
+                    call.respondText(config, ContentType.Application.Json)
+                }
+                post("/api/wifi/auto-switch") {
+                    val body = call.receiveText()
+                    val postData = extractPostData(body)
+                    val enabled = postData.optBoolean("enabled", false)
+                    withContext(Dispatchers.IO) {
+                        try {
+                            val f = java.io.File(this@CoreWebServer.context.filesDir, "auto_wifi_switch.json")
+                            f.parentFile?.mkdirs()
+                            f.writeText("{\"enabled\":$enabled}")
+                        } catch (e: Exception) { Log.e("AUTO_WIFI", "Save config failed", e) }
+                    }
+                    call.respondText("{\"result\":\"saved\"}", ContentType.Application.Json)
+                }
+
                 post("/api/auth/login") {
                     val pass = call.request.queryParameters["password"] ?: ""
                     val result = withContext(Dispatchers.IO) { bridge.doLogin(pass) }

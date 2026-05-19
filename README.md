@@ -15,7 +15,7 @@
 
 ---
 
-## 🛠️ 当前功能矩阵 (Current Version: v2.7.0)
+## 🛠️ 当前功能矩阵 (Current Version: v2.8.0)
 
 ### ✅ 已稳定实现 (Stable)
 - **模块化架构**：全站逻辑实现 JS 模块化解耦（Overview, NetInfo 等），加载更高效，维护更简单。
@@ -24,6 +24,7 @@
 - **远程桌面**：Web 端直接操作 Android 界面，内置仿真虚拟导航栏，支持滑动与长按手势。
 - **网络详情**：支持 5G SA/NSA 识别，RSSI/RSRP 可视化进度条，集成 WiFi 黑名单管理。
 - **蜂窝控制**：支持 SIM 卡槽切换及 5G/4G/3G 频段模式锁定。
+- **USB 自动关 WiFi**：USB 设备连接时自动关闭 WiFi，断开后自动恢复，支持手动开关。
 
 ### ⏳ 持续演进中 (Roadmap)
 - [ ] **网络调试**：集成 Ping、Traceroute、Iperf3 等诊断工具。

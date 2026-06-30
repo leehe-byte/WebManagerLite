@@ -1,12 +1,12 @@
 /**
  * Security 模块 - 处理管理密码修改逻辑
- * 使用浏览器原生 SubtleCrypto API 以避免 CryptoJS 兼容性问题
+ * 使用 CryptoJS SHA-256（兼容 HTTP 环境，Web Crypto API 需要 HTTPS）
  */
 const SecurityModule = {
     init() {
         const btn = document.getElementById('btn-change-pwd');
         const newPwdInput = document.getElementById('new-password');
-        
+
         if (!btn) return;
 
         // 实时强度检测
@@ -17,13 +17,8 @@ const SecurityModule = {
         btn.onclick = () => this.handleSubmit();
     },
 
-    // 原生 SHA256 实现 (异步)
-    async sha256(message) {
-        const msgBuffer = new TextEncoder().encode(message);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        return hashHex.toUpperCase();
+    sha256(message) {
+        return CryptoJS.SHA256(message).toString().toUpperCase();
     },
 
     checkStrength(pwd) {
@@ -41,7 +36,7 @@ const SecurityModule = {
 
         const hasNum = /\d/.test(pwd);
         const hasLetter = /[a-zA-Z]/.test(pwd);
-        
+
         if (!hasNum || !hasLetter) {
             info.textContent = "⚠️ 密码必须包含字母和数字";
             info.style.color = "#fa8c16";
@@ -78,14 +73,15 @@ const SecurityModule = {
         }
 
         try {
-            // 使用原生异步方法计算哈希
-            const hashedOld = await this.sha256(oldPwd);
-            const hashedNew = await this.sha256(newPwd);
+            const hashedOld = this.sha256(oldPwd);
+            const hashedNew = this.sha256(newPwd);
 
-            // 发送到后端
-            const res = await Api.post(`/api/auth/change-password?old=${hashedOld}&new=${hashedNew}`);
-            
-            // 兼容原厂返回的多种成功格式
+            // 通过 POST body 发送，避免哈希出现在 URL 中
+            const res = await Api.post('/api/auth/change-password', {
+                old: hashedOld,
+                new: hashedNew
+            });
+
             if (res && (res.result === "success" || res.result === 0 || res.result === "0")) {
                 await showAlert("密码修改成功，请使用新密码重新登录", "成功");
                 sessionStorage.clear();

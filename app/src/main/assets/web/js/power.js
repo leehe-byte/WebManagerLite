@@ -15,16 +15,10 @@ const PowerModule = {
     },
 
     checkDeviceModelAndHideFeatures: async function() {
-        try {
-            const data = await Api.get('/api/status');
-            const isF50 = data && data.model === "F50";
-        
-            const sleepSection = document.getElementById('sleep-section');
-            if (sleepSection) {
-                sleepSection.style.display = isF50 ? 'none' : 'block';
-            }
-        } catch (e) {
-            console.error("Check device model in power module failed", e);
+        const isF50 = dataStore.deviceModel === "F50";
+        const sleepSection = document.getElementById('sleep-section');
+        if (sleepSection) {
+            sleepSection.style.display = isF50 ? 'none' : 'block';
         }
     },
 

@@ -46,7 +46,12 @@ const Api = {
     // 登录
     async login(password) {
         try {
-            const response = await fetch('/api/auth/login?password=' + encodeURIComponent(password), { method: 'POST' });
+            const body = 'postData=' + encodeURIComponent(JSON.stringify({ password: password }));
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: body
+            });
             const data = await response.json();
             if (data.result === 0) {
                 sessionStorage.setItem('isLoggedIn', 'true');

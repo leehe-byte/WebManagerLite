@@ -40,9 +40,9 @@ const AtCommandModule = {
             const res = await Api.get(`/api/at/send?cmd=${encodeURIComponent(cmd)}`);
             
             if (res && res.result) {
-                resultArea.textContent = res.result;
-                // 如果包含 ERROR 字样，变更为黄色提示
-                if (res.result.includes('ERROR')) {
+                const resultText = String(res.result);
+                resultArea.textContent = resultText;
+                if (resultText.includes('ERROR')) {
                     resultArea.style.color = '#faad14';
                 }
             } else {

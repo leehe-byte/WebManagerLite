@@ -21,7 +21,7 @@
             }
         })();
 
-        const isAndroidApp = navigator.userAgent.indexOf('OpenWrtLiteManager') > -1 || !!window.AndroidBridge;
+        const isAndroidApp = !!window.AndroidBridge;
         if (isAndroidApp) {
             sessionStorage.setItem('isLoggedIn', 'true');
         } else if (sessionStorage.getItem('isLoggedIn') !== 'true') {

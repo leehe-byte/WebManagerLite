@@ -10,13 +10,16 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 let activeTimer = null;
+let activeTimerCallback = null;
+let activeTimerMs = 3000;
 let dataStore = {
     blackMacs: "",
     blackNames: "",
     qos_loaded: false,
     last_qci: "--",
     last_qos_dl: "-- Mbps",
-    last_qos_ul: "-- Mbps"
+    last_qos_ul: "-- Mbps",
+    deviceModel: null
 };
 
 async function initAppEngine() {
@@ -24,6 +27,7 @@ async function initAppEngine() {
     initMobileEvents();
     initModalControls();
     initThemeControl();
+    initVisibilityHandler();
 
     const savedStartPage = localStorage.getItem('default_start_page') || 'overview';
     const initialPage = window.location.hash.replace('#', '') || savedStartPage;
@@ -35,11 +39,44 @@ async function initAppEngine() {
         const currentActive = document.querySelector('.nav-item.active')?.getAttribute('data-page');
         if (pageId !== currentActive) loadPage(pageId);
     };
-    
+
     document.getElementById('logout-btn').onclick = () => {
         sessionStorage.clear();
         window.location.href = 'login.html';
     };
+}
+
+function initVisibilityHandler() {
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            if (activeTimer) {
+                clearInterval(activeTimer);
+                activeTimer = null;
+            }
+        } else {
+            if (activeTimerCallback && !activeTimer) {
+                activeTimerCallback();
+                activeTimer = setInterval(activeTimerCallback, activeTimerMs);
+            }
+        }
+    });
+}
+
+function startPolling(callback, intervalMs) {
+    stopPolling();
+    activeTimerCallback = callback;
+    activeTimerMs = intervalMs || 3000;
+    if (!document.hidden) {
+        activeTimer = setInterval(callback, activeTimerMs);
+    }
+}
+
+function stopPolling() {
+    if (activeTimer) {
+        clearInterval(activeTimer);
+        activeTimer = null;
+    }
+    activeTimerCallback = null;
 }
 
 function initThemeControl() {
@@ -73,9 +110,9 @@ function applyTheme(theme) {
 async function loadPage(pageId) {
     const contentArea = document.getElementById('content');
     if (!contentArea) return;
-    
+
     // 清理所有模块的定时器
-    if (activeTimer) clearInterval(activeTimer);
+    stopPolling();
     if (typeof OverviewModule !== 'undefined') OverviewModule.stop();
     if (typeof NetInfoModule !== 'undefined') NetInfoModule.stop();
 
@@ -87,10 +124,10 @@ async function loadPage(pageId) {
 
         updateActiveNavItem(pageId);
         initPageLogic(pageId);
-        
-        if (window.location.hash !== '#' + pageId) window.location.hash = pageId;
+
+        if (window.location.hash !== '#' + pageId) history.replaceState(null, '', '#' + pageId);
     } catch (e) {
-        contentArea.innerHTML = `<div class="card"><p style="color:red">页面加载失败: ${pageId}</p></div>`;
+        contentArea.innerHTML = `<div class="card"><p style="color:red">页面加载失败: ${escapeHtml(pageId)}</p></div>`;
     }
 }
 
@@ -100,23 +137,23 @@ function initPageLogic(pageId) {
     } else if (pageId === 'net-info' && typeof NetInfoModule !== 'undefined') {
         NetInfoModule.init();
     } else if (pageId === 'security' && typeof SecurityModule !== 'undefined') {
-        SecurityModule.init(); // 初始化安全设置逻辑
+        SecurityModule.init();
     } else if (pageId === 'lan' && typeof LanModule !== 'undefined') {
         LanModule.init();
     } else if (pageId === 'mihomo' && typeof MihomoModule !== 'undefined') {
         MihomoModule.init();
-        activeTimer = setInterval(() => MihomoModule.syncStatus(), 3000);
+        startPolling(() => MihomoModule.syncStatus(), 3000);
     } else if (pageId === 'samba' && typeof SambaModule !== 'undefined') {
         SambaModule.init();
-        activeTimer = setInterval(() => SambaModule.syncStatus(), 3000);
+        startPolling(() => SambaModule.syncStatus(), 3000);
     } else if (pageId === 'adb' && typeof AdbModule !== 'undefined') {
         AdbModule.init();
-        activeTimer = setInterval(() => AdbModule.syncStatus(), 3000);
+        startPolling(() => AdbModule.syncStatus(), 3000);
     } else if (pageId === 'wifi' && typeof WifiModule !== 'undefined') {
         WifiModule.init();
     } else if (pageId === 'sms' && typeof SmsModule !== 'undefined') {
         SmsModule.init();
-        activeTimer = setInterval(() => SmsModule.syncStatus(), 3000);
+        startPolling(() => SmsModule.syncStatus(), 3000);
     } else if (pageId === 'at-command' && typeof AtCommandModule !== 'undefined') {
         AtCommandModule.init();
     } else if (pageId === 'remote' && typeof initRemoteScrcpy === 'function') {
@@ -131,6 +168,26 @@ function initPageLogic(pageId) {
 }
 
 // --- 通用工具函数 ---
+function escapeHtml(text) {
+    if (!text || typeof text !== 'string') return '';
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function escapeAttr(text) {
+    if (!text || typeof text !== 'string') return '';
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
 function setText(id, val) {
     const el = document.getElementById(id);
     if (el) el.textContent = val || '--';
@@ -154,9 +211,18 @@ function formatSpeed(v) {
     return formatBytes(parseFloat(v || 0)) + '/s';
 }
 
+// Unicode-safe base64 (替代 btoa，支持中文/emoji)
+function toBase64(str) {
+    const bytes = new TextEncoder().encode(str);
+    const binStr = Array.from(bytes, b => String.fromCharCode(b)).join('');
+    return btoa(binStr);
+}
+
 function syncMaskedField(target) {
     const el = document.querySelector(`[data-target="${target}"]`);
-    if (el && !el.textContent.includes('*')) el.textContent = dataStore[target] || '--';
+    if (el && typeof dataStore[target] !== 'undefined' && !el.textContent.includes('*')) {
+        el.textContent = dataStore[target] || '--';
+    }
 }
 
 window.toggleVisibility = (target) => {
@@ -178,11 +244,11 @@ const ApiExtra = {
         const picker = document.getElementById('custom-picker');
         const list = document.getElementById('picker-list');
         document.getElementById('picker-title').textContent = title;
-        list.innerHTML = options.map(opt => `
-            <div class="picker-item ${opt.value == currentVal ? 'selected' : ''}" onclick="ApiExtra.handlePick('${opt.value}', '${opt.label}')">
-                ${opt.label}
-            </div>
-        `).join('');
+        list.innerHTML = options.map(opt =>
+            `<div class="picker-item ${opt.value == currentVal ? 'selected' : ''}" onclick="ApiExtra.handlePick('${escapeAttr(opt.value)}', '${escapeAttr(opt.label)}')">
+                ${escapeHtml(opt.label)}
+            </div>`
+        ).join('');
         this.currentCallback = callback;
         picker.classList.add('active');
     },
@@ -273,6 +339,8 @@ function initMobileEvents() {
 }
 
 window.showSignalHelp = (type) => {
-    let content = type === 'rsrp' ? `<b>RSRP (参考信号接收功率)</b><br><br>这是衡量网络覆盖的核心指标。<br>-80dBm 以上: 信号极强<br>-80 至 -95: 信号良好<br>-95 至 -110: 信号一般<br>-110dBm 以下: 信号较差` : `<b>RSSI (接收信号强度指示)</b><br><br>反映整个频段的总能量强度。`;
+    const content = type === 'rsrp'
+        ? `<b>RSRP (参考信号接收功率)</b><br><br>这是衡量网络覆盖的核心指标。<br>-80dBm 以上: 信号极强<br>-80 至 -95: 信号良好<br>-95 至 -110: 信号一般<br>-110dBm 以下: 信号较差`
+        : `<b>RSSI (接收信号强度指示)</b><br><br>反映整个频段的总能量强度。`;
     showAlert(content, "参数说明");
-}
+};

@@ -39,12 +39,12 @@ const NetInfoModule = {
                     listBody.innerHTML = data.station_list.map(dev => `
                         <tr>
                             <td style="padding: 12px 0;">
-                                <div style="font-weight: 500;">${dev.hostname || '未知设备'}</div>
-                                <div style="font-size: 10px; color: #999;">${dev.mac_addr.toUpperCase()}</div>
+                                <div style="font-weight: 500;">${escapeHtml(dev.hostname) || '未知设备'}</div>
+                                <div style="font-size: 10px; color: #999;">${escapeHtml(dev.mac_addr?.toUpperCase())}</div>
                             </td>
-                            <td><code>${dev.ip_addr}</code></td>
+                            <td><code>${escapeHtml(dev.ip_addr)}</code></td>
                             <td style="text-align: right;">
-                                <button class="badge" style="background:#fff1f0; color:#f5222d; border-color:#ffa39e; cursor:pointer;" onclick="NetInfoModule.addToBlacklist('${dev.mac_addr}', '${dev.hostname}')">拉黑</button>
+                                <button class="badge" style="background:#fff1f0; color:#f5222d; border-color:#ffa39e; cursor:pointer;" onclick="NetInfoModule.addToBlacklist('${escapeAttr(dev.mac_addr)}', '${escapeAttr(dev.hostname)}')">拉黑</button>
                             </td>
                         </tr>
                     `).join('') || '<tr><td colspan="3" style="text-align:center; padding:20px;">暂无连接设备</td></tr>';
@@ -64,10 +64,10 @@ const NetInfoModule = {
                         } else {
                             blackBody.innerHTML = macs.map((mac, i) => `
                                 <tr>
-                                    <td>${names[i] || '未知'}</td>
-                                    <td><code style="font-size:11px;">${mac.toUpperCase()}</code></td>
+                                    <td>${escapeHtml(names[i]) || '未知'}</td>
+                                    <td><code style="font-size:11px;">${escapeHtml(mac.toUpperCase())}</code></td>
                                     <td style="text-align: right;">
-                                        <button class="badge" style="background:#f6ffed; color:#52c41a; border-color:#b7eb8f; cursor:pointer;" onclick="NetInfoModule.removeFromBlacklist('${mac}', '${names[i] || ""}')">移出</button>
+                                        <button class="badge" style="background:#f6ffed; color:#52c41a; border-color:#b7eb8f; cursor:pointer;" onclick="NetInfoModule.removeFromBlacklist('${escapeAttr(mac)}', '${escapeAttr(names[i] || '')}')">移出</button>
                                     </td>
                                 </tr>
                             `).join('');
@@ -225,25 +225,21 @@ const NetInfoModule = {
     },
 
     async checkFeatures() {
-        try {
-            const data = await Api.get('/api/status');
-            const isF50 = data && data.model === "F50";
-            const nfcSection = document.getElementById('nfc-section');
-            if (nfcSection) nfcSection.style.display = isF50 ? 'none' : 'flex';
-            const sleepSection = document.getElementById('sleep-section');
-            if (sleepSection) sleepSection.style.display = isF50 ? 'none' : 'block';
-        } catch (e) {}
+        const isF50 = dataStore.deviceModel === "F50";
+        const nfcSection = document.getElementById('nfc-section');
+        if (nfcSection) nfcSection.style.display = isF50 ? 'none' : 'flex';
+        const sleepSection = document.getElementById('sleep-section');
+        if (sleepSection) sleepSection.style.display = isF50 ? 'none' : 'block';
     },
 
     async checkDualSim() {
+        const isF50 = dataStore.deviceModel === "F50";
+        if (isF50) {
+            const container = document.getElementById('ctrl-sim-container');
+            if (container) container.style.display = 'none';
+            return;
+        }
         try {
-            const statusData = await Api.get('/api/status');
-            const isF50 = statusData && statusData.model === "F50";
-            if (isF50) {
-                const container = document.getElementById('ctrl-sim-container');
-                if (container) container.style.display = 'none';
-                return;
-            }
             const data = await Api.get('/api/proxy/goform/goform_get_cmd_process?isTest=false&cmd=dual_sim_support&_=' + Date.now());
             if (data && data.dual_sim_support === "1") {
                 const container = document.getElementById('ctrl-sim-container');

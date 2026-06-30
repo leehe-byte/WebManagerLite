@@ -93,9 +93,9 @@ const SambaModule = {
 
         let html = '';
         this.shares.forEach((share, index) => {
-            const name = share.name || 'Unnamed';
-            const path = share.path || '/sdcard';
-            const comment = share.comment || '';
+            const name = escapeHtml(share.name) || 'Unnamed';
+            const path = escapeHtml(share.path) || '/sdcard';
+            const comment = escapeHtml(share.comment) || '';
             const writable = share.writable === 'yes';
             const browseable = share.browseable === 'yes';
             const isPublic = share.public === 'yes';
@@ -220,7 +220,7 @@ const SambaModule = {
     async deleteShare(index) {
         const share = this.shares[index];
         if (!share) return;
-        if (!confirm('确定删除共享「' + share.name + '」吗？')) return;
+        if (!await showConfirm('确定删除共享「' + escapeHtml(share.name) + '」吗？', '删除确认')) return;
         try {
             const res = await Api.post('/api/samba/share/remove', { name: share.name });
             if (res && res.result === 'saved') {

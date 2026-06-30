@@ -253,7 +253,7 @@ const WifiModule = {
         const res = await Api.post('/api/proxy/goform/goform_set_cmd_process', params);
         if (res && res.result === 'success') {
             await showAlert(`WiFi 已${mode === 'off' ? '关闭' : '切换至 ' + mode + 'GHz'}`, "操作成功");
-            setTimeout(() => location.reload(), 1500);
+            setTimeout(() => this.init(), 1500);
         } else {
             await showAlert("操作失败: " + (res?.result || "未知错误"));
         }
@@ -278,13 +278,13 @@ const WifiModule = {
             ApBroadcastDisabled: document.getElementById('wifi-broadcast').checked ? '0' : '1',
             ApMaxStationNumber: document.getElementById('wifi-max-station').value,
             EncrypType: (authMode === 'OPEN') ? 'NONE' : 'CCMP',
-            Password: btoa(rawPass)
+            Password: toBase64(rawPass)
         };
 
         const res = await Api.post('/api/proxy/goform/goform_set_cmd_process', params);
         if (res && (res.result === 'success' || res.result === '0')) {
             await showAlert("WiFi 设置已提交！请等待无线服务重启。", "保存成功");
-            setTimeout(() => location.reload(), 2000);
+            setTimeout(() => this.init(), 2000);
         } else {
             await showAlert("保存失败: " + (res?.result || "未知错误"));
         }
@@ -304,7 +304,7 @@ const WifiModule = {
             const res = await Api.post('/api/proxy/goform/goform_set_cmd_process', params);
             if (res && res.result === 'success') {
                 await showAlert("WiFi 已关闭", "操作成功");
-                setTimeout(() => location.reload(), 1500);
+                setTimeout(() => this.init(), 1500);
             } else {
                 await showAlert("操作失败: " + (res?.result || "未知错误"));
             }
@@ -338,13 +338,13 @@ const WifiModule = {
             ApBroadcastDisabled: document.getElementById('wifi-broadcast').checked ? '0' : '1',
             ApMaxStationNumber: document.getElementById('wifi-max-station').value,
             EncrypType: (authMode === 'OPEN') ? 'NONE' : 'CCMP',
-            Password: btoa(rawPass)
+            Password: toBase64(rawPass)
         };
 
         const paramRes = await Api.post('/api/proxy/goform/goform_set_cmd_process', params);
         if (paramRes && (paramRes.result === 'success' || paramRes.result === '0')) {
             await showAlert(`WiFi 已切换至 ${mode}GHz 并应用新参数`, "操作成功");
-            setTimeout(() => location.reload(), 2000);
+            setTimeout(() => this.init(), 2000);
         } else {
             await showAlert("频段已切换，但参数保存失败: " + (paramRes?.result || "未知错误"));
         }

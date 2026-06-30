@@ -13,7 +13,7 @@ const OverviewModule = {
         this.contexts = [];
         this.sync();
         if (this.perfTimer) clearInterval(this.perfTimer);
-        this.perfTimer = setInterval(() => this.sync(), 1000);
+        this.perfTimer = setInterval(() => this.sync(), 2000);
     },
 
     stop() {
@@ -26,7 +26,7 @@ const OverviewModule = {
     initCharts(cores) {
         const grid = document.getElementById('cpu-core-grid');
         if (!grid || this.isInitialized) return;
-        
+
         grid.innerHTML = '';
         this.history = cores.map(() => new Array(40).fill(0));
         this.contexts = [];
@@ -48,12 +48,12 @@ const OverviewModule = {
         ctx.strokeStyle = 'rgba(0,0,0,0.05)'; ctx.lineWidth = 0.5;
         for(let x=0; x<w; x+=15) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
         for(let y=0; y<h; y+=10) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
-        
+
         ctx.beginPath(); ctx.moveTo(0, h);
         const step = w / (data.length - 1);
         data.forEach((v, i) => ctx.lineTo(i * step, h - (v/100*h)));
         ctx.lineTo(w, h); ctx.fillStyle = 'rgba(24,144,255,0.1)'; ctx.fill();
-        
+
         ctx.beginPath(); ctx.strokeStyle = '#1890ff'; ctx.lineWidth = 1.2;
         data.forEach((v, i) => { if(i==0) ctx.moveTo(0, h-(v/100*h)); else ctx.lineTo(i * step, h-(v/100*h)); });
         ctx.stroke();
@@ -61,14 +61,21 @@ const OverviewModule = {
 
     async sync() {
         try {
-            // 1. 获取系统性能详情 (由 SystemStatsManager 提供)
-            const localPerf = await Api.get('/api/system/details');
+            const combinedCmds = 'network_provider_fullname,network_provider,network_type,network_signalbar,Z5g_rsrp,network_lte_rsrp,ppp_status,flux_realtime_rx_thrpt,flux_realtime_tx_thrpt,wan_ipaddr,ipv6_wan_ipaddr,wa_inner_version,hardware_version,imei,imsi,sim_imsi,sim_iccid,sim_slot,monthly_tx_bytes,monthly_rx_bytes,sms_unread_num,queryAccessPointInfo,station_list,roam_setting_option,flux_monthly_rx_bytes,flux_monthly_tx_bytes,electron_id,model_name';
+
+            // 三个 API 并行请求
+            const [localPerf, status, gwData] = await Promise.all([
+                Api.get('/api/system/details'),
+                Api.get('/api/status'),
+                Api.get(`/api/proxy/goform/goform_get_cmd_process?multi_data=1&isTest=false&cmd=${encodeURIComponent(combinedCmds)}&_=${Date.now()}`)
+            ]);
+
+            // 1. 系统性能详情
             if (localPerf) {
                 if (localPerf.cpu_model) document.getElementById('real-cpu-model').textContent = localPerf.cpu_model;
-                
+
                 if (localPerf.cpu && localPerf.cpu.cores) {
                     if (!this.isInitialized) this.initCharts(localPerf.cpu.cores);
-                    // 确保百分比文字显示
                     const cpuUsageLabel = document.getElementById('real-total-cpu-usage');
                     if (cpuUsageLabel) {
                         cpuUsageLabel.textContent = (localPerf.cpu.total_usage || 0) + '%';
@@ -83,14 +90,14 @@ const OverviewModule = {
                         }
                     });
                 }
-                
+
                 if (localPerf.memory) {
                     const m = localPerf.memory;
                     setText('real-mem-pct', m.usage + '%');
                     const memBar = document.getElementById('real-mem-bar');
                     if (memBar) memBar.style.width = m.usage + '%';
                     setText('real-mem-val', `${m.used} / ${m.total} MB`);
-                    
+
                     const sPct = m.swap_total > 0 ? Math.round(m.swap_used * 100 / m.swap_total) : 0;
                     setText('real-swap-pct', sPct + '%');
                     const swapBar = document.getElementById('real-swap-bar');
@@ -107,48 +114,35 @@ const OverviewModule = {
                 }
             }
 
-            // 2. 获取网关基础状态 (包含存储信息)
-            await this.updateGatewayStatus();
-
-        } catch (e) {
-            console.error('Overview sync failed:', e);
-        }
-    },
-
-    async updateGatewayStatus() {
-        try {
-            const status = await Api.get('/api/status');
+            // 2. 网关基础状态 + 存储
             if (status) {
                 setText('sys-hostname', status.manufacturer);
                 setText('sys-model', status.model);
                 setText('sys-kernel', status.kernel);
                 setText('sys-uptime', status.uptime);
-                
-                // 更新存储 (Card A 表格)
+
                 const storageStr = `${status.storage_usage}% (${Math.round(status.storage_used/1024)}G/${Math.round(status.storage_total/1024)}G)`;
                 setText('sys-storage-detail', storageStr);
-                
-                // 更新存储 (Card B 资源条)
+
                 setText('real-storage-pct', status.storage_usage + '%');
                 const storageBar = document.getElementById('real-storage-bar');
                 if (storageBar) storageBar.style.width = status.storage_usage + '%';
                 setText('real-storage-val', `${Math.round(status.storage_used/1024)}G / ${Math.round(status.storage_total/1024)}G`);
 
-                // 更新电池
                 setText('bat-val', status.battery_level + '%');
                 if (status.battery_temp) setText('bat-temp', `${status.battery_temp}°C`);
                 const batFill = document.getElementById('bat-fill');
                 if (batFill) batFill.style.width = status.battery_level + '%';
                 const chargingMark = document.getElementById('bat-charging-mark');
                 if (chargingMark) chargingMark.style.display = status.is_charging ? 'block' : 'none';
+
+                // 缓存设备型号供其他模块复用
+                dataStore.deviceModel = status.model;
             }
 
-            // 3. 获取其他网关信息 (运营商、网速等)
-            const combinedCmds = 'network_provider_fullname,network_provider,network_type,network_signalbar,Z5g_rsrp,network_lte_rsrp,ppp_status,flux_realtime_rx_thrpt,flux_realtime_tx_thrpt,wan_ipaddr,ipv6_wan_ipaddr,wa_inner_version,hardware_version,imei,imsi,sim_imsi,sim_iccid,sim_slot,monthly_tx_bytes,monthly_rx_bytes,sms_unread_num,queryAccessPointInfo,station_list,roam_setting_option,flux_monthly_rx_bytes,flux_monthly_tx_bytes,electron_id,model_name';
-            const data = await Api.get(`/api/proxy/goform/goform_get_cmd_process?multi_data=1&isTest=false&cmd=${encodeURIComponent(combinedCmds)}&_=${Date.now()}`);
-
-            if (data) {
-                const opName = data.network_provider_fullname || data.network_provider || "未知" ;
+            // 3. 网关信息 (运营商、网速等)
+            if (gwData) {
+                const opName = gwData.network_provider_fullname || gwData.network_provider || "未知";
                 setText('operator', opName);
                 const logoEl = document.getElementById('operator-logo');
                 if (logoEl && opName !== "正在读取...") {
@@ -158,44 +152,44 @@ const OverviewModule = {
                     else logoEl.src = 'img/unknown.png';
                 }
 
-                const is5G = data.network_type == 20 || data.network_type == '5G';
-                let rsrpVal = is5G ? data.Z5g_rsrp : data.network_lte_rsrp;
+                const is5G = gwData.network_type == 20 || gwData.network_type == '5G';
+                let rsrpVal = is5G ? gwData.Z5g_rsrp : gwData.network_lte_rsrp;
                 const rsrp = parseInt(rsrpVal || 0);
                 setText('dbm-value', rsrp + " dBm");
-                
+
                 let level = 0;
                 if (rsrp > -85) level = 5;
                 else if (rsrp > -95) level = 4;
                 else if (rsrp > -105) level = 3;
                 else if (rsrp > -115) level = 2;
                 else level = 1;
-                
+
                 const sigBarContainer = document.getElementById('signal-bars');
                 if (sigBarContainer) sigBarContainer.className = 'signal-bars-row sig-level-' + level;
 
-                dataStore['wan-ip'] = data.wan_ipaddr;
-                dataStore['wan-ipv6'] = data.ipv6_wan_ipaddr || "未分配";
+                dataStore['wan-ip'] = gwData.wan_ipaddr;
+                dataStore['wan-ipv6'] = gwData.ipv6_wan_ipaddr || "未分配";
                 syncMaskedField('wan-ip');
                 syncMaskedField('wan-ipv6');
 
-                setText('net-type-badge', data.network_type);
-                const pppStatus = data.ppp_status || "";
+                setText('net-type-badge', gwData.network_type);
+                const pppStatus = gwData.ppp_status || "";
                 const isConnected = pppStatus.includes('connected') && !pppStatus.includes('disconnected');
                 setText('c-status', isConnected ? "已连接网络" : "已断开连接");
 
-                setText('sim-badge', data.sim_slot == '0' ? '插拔卡' : '内置卡');
-                setText('roam-status', (data.roam_setting_option === 'on' || data.dial_roam_setting_option === 'on') ? '开启' : '关闭');
+                setText('sim-badge', gwData.sim_slot == '0' ? '插拔卡' : '内置卡');
+                setText('roam-status', (gwData.roam_setting_option === 'on' || gwData.dial_roam_setting_option === 'on') ? '开启' : '关闭');
 
-                const monthlyRx = parseFloat(data.flux_monthly_rx_bytes || data.monthly_rx_bytes || 0);
-                const monthlyTx = parseFloat(data.flux_monthly_tx_bytes || data.monthly_tx_bytes || 0);
+                const monthlyRx = parseFloat(gwData.flux_monthly_rx_bytes || gwData.monthly_rx_bytes || 0);
+                const monthlyTx = parseFloat(gwData.flux_monthly_tx_bytes || gwData.monthly_tx_bytes || 0);
                 setText('monthly-rx', formatBytes(monthlyRx));
                 setText('monthly-tx', formatBytes(monthlyTx));
                 setText('monthly-usage', formatBytes(monthlyRx + monthlyTx));
 
-                setText('up-speed', formatSpeed(data.flux_realtime_tx_thrpt));
-                setText('down-speed', formatSpeed(data.flux_realtime_rx_thrpt));
+                setText('up-speed', formatSpeed(gwData.flux_realtime_tx_thrpt));
+                setText('down-speed', formatSpeed(gwData.flux_realtime_rx_thrpt));
 
-                const unread = parseInt(data.sms_unread_num || 0);
+                const unread = parseInt(gwData.sms_unread_num || 0);
                 const smsBadge = document.getElementById('sms-unread');
                 if (smsBadge) {
                     smsBadge.style.display = unread > 0 ? 'inline-block' : 'none';
@@ -203,27 +197,31 @@ const OverviewModule = {
                 }
                 setText('sms-text', unread > 0 ? `${unread} 条未读` : '无未读');
 
-                setText('hw-version', data.hardware_version);
-                setText('sw-version', data.wa_inner_version);
-                dataStore.imei = data.imei;
-                
-                if ( status.model == "F50" || data.model_name == "F50" ) {
-                    dataStore.imsi = data.imsi;
+                setText('hw-version', gwData.hardware_version);
+                setText('sw-version', gwData.wa_inner_version);
+                dataStore.imei = gwData.imei;
+
+                if (status && status.model == "F50" || gwData.model_name == "F50") {
+                    dataStore.imsi = gwData.imsi;
                 } else {
-                    dataStore.imsi = data.sim_imsi;
+                    dataStore.imsi = gwData.sim_imsi;
                 }
-                dataStore.iccid = data.sim_iccid;
+                dataStore.iccid = gwData.sim_iccid;
                 ['imei', 'imsi', 'iccid'].forEach(syncMaskedField);
 
-                setText('license-model-name', data.model_name);
-                setText('license-electron-id', data.electron_id);
+                setText('license-model-name', gwData.model_name);
+                setText('license-electron-id', gwData.electron_id);
 
-                if (data.station_list) setText('wifi-station-count', `${data.station_list.length} 台设备`);
-                
-                const activeAp = data.ResponseList?.find(ap => ap.AccessPointSwitchStatus === "1") || data.ResponseList?.[0];
+                if (gwData.station_list) setText('wifi-station-count', `${gwData.station_list.length} 台设备`);
+
+                const activeAp = gwData.ResponseList?.find(ap => ap.AccessPointSwitchStatus === "1") || gwData.ResponseList?.[0];
                 if (activeAp) {
                     setText('sys-wifi-ssid', activeAp.SSID);
-                    dataStore['wifi-pass'] = activeAp.Password ? atob(activeAp.Password) : "--";
+                    try {
+                        dataStore['wifi-pass'] = activeAp.Password ? atob(activeAp.Password) : "--";
+                    } catch (e) {
+                        dataStore['wifi-pass'] = activeAp.Password || "--";
+                    }
                     syncMaskedField('wifi-pass');
                     const qrImg = document.getElementById('sys-wifi-qr-img');
                     const qrSection = document.getElementById('sys-wifi-qr-section');
@@ -234,7 +232,7 @@ const OverviewModule = {
                 }
             }
         } catch (e) {
-            console.error("Update gateway status failed", e);
+            console.error('Overview sync failed:', e);
         }
     }
 };

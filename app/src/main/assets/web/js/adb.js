@@ -56,7 +56,7 @@ const AdbModule = {
     copyCmd: function() {
         const cmd = document.getElementById('adb-connect-cmd').textContent;
         navigator.clipboard.writeText(cmd).then(() => {
-            alert('命令已复制到剪贴板');
+            showAlert('命令已复制到剪贴板', '提示');
         });
     }
 };

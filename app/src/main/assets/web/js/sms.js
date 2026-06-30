@@ -64,14 +64,15 @@ const SmsModule = {
         
         container.innerHTML = this.allThreads.map(thread => {
             const lastMsg = thread.messages[thread.messages.length - 1];
-            const content = this.safeBase64Decode(lastMsg.content);
+            const content = escapeHtml(this.safeBase64Decode(lastMsg.content));
+            const num = escapeAttr(thread.number);
             return `
-                <div class="sms-thread-item" onclick="SmsModule.openThread('${thread.number}')">
+                <div class="sms-thread-item" onclick="SmsModule.openThread('${num}')">
                     ${thread.hasUnread ? '<div class="unread-dot"></div>' : ''}
-                    <div class="sms-thread-avatar">${thread.number.substring(0, 1)}</div>
+                    <div class="sms-thread-avatar">${escapeHtml(thread.number.substring(0, 1))}</div>
                     <div class="sms-thread-main">
                         <div class="sms-thread-top">
-                            <span class="sms-thread-number">${thread.number} ${thread.unreadCount > 0 ? `<span style="color:#ff4d4f; font-size:12px;">(${thread.unreadCount})</span>` : ''}</span>
+                            <span class="sms-thread-number">${escapeHtml(thread.number)} ${thread.unreadCount > 0 ? `<span style="color:#ff4d4f; font-size:12px;">(${thread.unreadCount})</span>` : ''}</span>
                             <span class="sms-thread-time">${this.formatSimpleTime(lastMsg.date)}</span>
                         </div>
                         <div class="sms-thread-snippet">${content}</div>
@@ -139,8 +140,8 @@ const SmsModule = {
     },
 
     renderBubble(msg) {
-        const content = this.safeBase64Decode(msg.content);
-        const otp = this.extractOTP(content);
+        const content = escapeHtml(this.safeBase64Decode(msg.content));
+        const otp = this.extractOTP(this.safeBase64Decode(msg.content));
         const dateStr = this.formatFullDate(msg.date);
 
         return `
@@ -149,8 +150,8 @@ const SmsModule = {
                     <div class="chat-content">${content}</div>
                     ${otp ? `
                         <div class="otp-card">
-                            <span class="otp-val">${otp}</span>
-                            <button class="btn-copy-sm" onclick="event.stopPropagation(); SmsModule.copyText('${otp}', this)">复制</button>
+                            <span class="otp-val">${escapeHtml(otp)}</span>
+                            <button class="btn-copy-sm" onclick="event.stopPropagation(); SmsModule.copyText('${escapeAttr(otp)}', this)">复制</button>
                         </div>
                     ` : ''}
                 </div>

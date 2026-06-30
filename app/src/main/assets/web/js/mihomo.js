@@ -209,7 +209,7 @@ const MihomoModule = {
                     ${this.uas.map((ua, i) => `
                         <tr>
                             <td style="padding:8px 12px; font-size:12px; color:var(--text-sub); width:30px;">${i + 1}</td>
-                            <td style="padding:8px 12px; font-size:12px; word-break:break-all; font-family:monospace;">${ua}</td>
+                            <td style="padding:8px 12px; font-size:12px; word-break:break-all; font-family:monospace;">${escapeHtml(ua)}</td>
                             <td style="padding:8px 12px; text-align:right; width:40px;">
                                 <span style="cursor:pointer; color:var(--danger); font-size:16px;" onclick="MihomoModule.removeUA(${i})" title="删除">×</span>
                             </td>
@@ -255,15 +255,15 @@ const MihomoModule = {
             <div style="border:1px solid var(--border-color); border-radius:8px; margin-bottom:10px; overflow:hidden;">
                 <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; background:var(--bg); cursor:pointer; flex-wrap:nowrap; gap:6px;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
                     <div style="display:flex; align-items:center; gap:6px; min-width:0; flex-shrink:1; overflow:hidden;">
-                        <span style="font-weight:600; color:var(--text-main); white-space:nowrap;">${sub.name}</span>
-                        <span class="badge" style="background:rgba(24,144,255,0.1); color:var(--primary); flex-shrink:0;">${sub.type || 'http'}</span>
+                        <span style="font-weight:600; color:var(--text-main); white-space:nowrap;">${escapeHtml(sub.name)}</span>
+                        <span class="badge" style="background:rgba(24,144,255,0.1); color:var(--primary); flex-shrink:0;">${escapeHtml(sub.type) || 'http'}</span>
                     </div>
-                    <span style="color:var(--text-sub); font-size:10px; min-width:0; flex-shrink:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right; max-width:180px;" title="${sub.url || ''}">${sub.url ? sub.url.substring(0, 30) + '...' : '无 URL'}</span>
+                    <span style="color:var(--text-sub); font-size:10px; min-width:0; flex-shrink:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right; max-width:180px;" title="${escapeAttr(sub.url || '')}">${sub.url ? escapeHtml(sub.url.substring(0, 30)) + '...' : '无 URL'}</span>
                 </div>
                 <div style="display:none; padding:10px 12px; border-top:1px solid var(--border-color);">
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:11px; margin-bottom:8px;">
-                        <div style="grid-column:1/-1;"><span style="color:var(--text-sub);">URL:</span> <code style="font-size:10px; word-break:break-all;">${sub.url || '--'}</code></div>
-                        <div><span style="color:var(--text-sub);">UA:</span> ${sub.ua || '默认'}</div>
+                        <div style="grid-column:1/-1;"><span style="color:var(--text-sub);">URL:</span> <code style="font-size:10px; word-break:break-all;">${escapeHtml(sub.url) || '--'}</code></div>
+                        <div><span style="color:var(--text-sub);">UA:</span> ${escapeHtml(sub.ua) || '默认'}</div>
                         <div><span style="color:var(--text-sub);">更新间隔:</span> ${sub.interval || 86400}s</div>
                     </div>
                     <div style="display:flex; gap:6px;">

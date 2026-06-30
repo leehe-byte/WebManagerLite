@@ -136,7 +136,7 @@ class BridgeProtocol(private val context: Context) {
                 Log.d(TAG, "[DISPATCH] RD=$rd, AD=$ad")
 
                 val paramList = mutableListOf<String>()
-                paramList.add("isTest=false") 
+                paramList.add("isTest=false")
                 if (postData.startsWith("postData=")) {
                     val decodedStr = URLDecoder.decode(postData.substring(9), "UTF-8")
                     // 尝试解析为 JSON，如果失败则视为 form-urlencoded 格式

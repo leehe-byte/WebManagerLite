@@ -18,6 +18,7 @@ class ScrcpyManager(private val context: Context) {
     private var serverProcess: Process? = null
     private val isStarting = AtomicBoolean(false)
     private val serverPath = "/data/local/tmp/scrcpy-server-v3.3.4"
+    private var serverScope: CoroutineScope? = null
 
     private fun isProcessAlive(): Boolean {
         return try {
@@ -38,7 +39,7 @@ class ScrcpyManager(private val context: Context) {
             // 1. 检查目标文件是否存在 (通过 su 检查，因为普通 app 可能没权限 ls /data/local/tmp)
             val checkProcess = Runtime.getRuntime().exec(arrayOf("su", "-c", "[ -f $serverPath ] && echo 'EXISTS'"))
             val result = checkProcess.inputStream.bufferedReader().readText().trim()
-            
+
             if (result == "EXISTS") {
                 Log.d(TAG, "scrcpy-server already exists at $serverPath")
                 return
@@ -49,7 +50,7 @@ class ScrcpyManager(private val context: Context) {
             // 2. 从 assets 读取并写入到 App 私有目录
             val assetName = "scrcpy-server-v3.3.4"
             val tempFile = File(context.cacheDir, assetName)
-            
+
             context.assets.open(assetName).use { input ->
                 FileOutputStream(tempFile).use { output ->
                     input.copyTo(output)
@@ -58,11 +59,11 @@ class ScrcpyManager(private val context: Context) {
 
             // 3. 使用 su 拷贝到 /data/local/tmp 并设置权限
             val deployCmd = """
-                cp ${tempFile.absolutePath} $serverPath && 
-                chmod 755 $serverPath && 
+                cp ${tempFile.absolutePath} $serverPath &&
+                chmod 755 $serverPath &&
                 rm ${tempFile.absolutePath}
             """.trimIndent()
-            
+
             Runtime.getRuntime().exec(arrayOf("su", "-c", deployCmd)).waitFor()
             Log.i(TAG, "scrcpy-server deployed successfully to $serverPath")
 
@@ -74,8 +75,10 @@ class ScrcpyManager(private val context: Context) {
     fun startServer() {
         if (isProcessAlive()) return
         if (isStarting.getAndSet(true)) return
-        
-        CoroutineScope(Dispatchers.IO).launch {
+
+        serverScope?.cancel()
+        serverScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+        serverScope?.launch {
             try {
                 // 启动前先确保文件已部署
                 deployServerIfNeeded()
@@ -85,17 +88,17 @@ class ScrcpyManager(private val context: Context) {
                 delay(300)
 
                 val cmd = "export CLASSPATH=$serverPath && app_process / com.genymobile.scrcpy.Server 3.3.4 tunnel_forward=true audio=false control=true cleanup=false send_device_meta=false send_frame_meta=false send_codec_meta=false send_dummy_byte=false"
-                
+
                 Log.i(TAG, "Starting scrcpy-server...")
                 serverProcess = Runtime.getRuntime().exec(arrayOf("su", "shell", "-c", cmd))
-                
+
                 launch {
                     serverProcess?.inputStream?.bufferedReader()?.forEachLine { Log.d(TAG, "[STDOUT] $it") }
                 }
                 launch {
                     serverProcess?.errorStream?.bufferedReader()?.forEachLine { Log.e(TAG, "[STDERR] $it") }
                 }
-                
+
                 serverProcess?.waitFor()
                 Log.w(TAG, "scrcpy-server process exited")
             } catch (e: Exception) {
@@ -110,7 +113,7 @@ class ScrcpyManager(private val context: Context) {
     suspend fun handleWebSocket(session: DefaultWebSocketServerSession) {
         var videoSocket: LocalSocket? = null
         var controlSocket: LocalSocket? = null
-        
+
         try {
             session.send(Frame.Text("HANDSHAKE_OK"))
             videoSocket = connectWithRetry("scrcpy")
@@ -176,8 +179,14 @@ class ScrcpyManager(private val context: Context) {
     fun stopServer() {
         serverProcess?.destroy()
         serverProcess = null
-        CoroutineScope(Dispatchers.IO).launch {
-            Runtime.getRuntime().exec(arrayOf("su", "-c", "pkill -9 -f scrcpy-server"))
-        }
+        serverScope?.cancel()
+        serverScope = null
+        Thread {
+            try {
+                Runtime.getRuntime().exec(arrayOf("su", "-c", "pkill -9 -f scrcpy-server")).waitFor()
+            } catch (e: Exception) {
+                Log.e(TAG, "Stop error: ${e.message}")
+            }
+        }.start()
     }
 }

@@ -73,6 +73,7 @@ class MainActivity : AppCompatActivity() {
         portText.text = getCurrentPort().toString()
     }
 
+    @Suppress("DEPRECATION")
     private fun fillResourceInfo() {
         // 电池信息
         val batteryIntent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))

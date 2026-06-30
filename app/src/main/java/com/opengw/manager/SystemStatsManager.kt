@@ -28,15 +28,19 @@ class SystemStatsManager {
         try {
             File("/proc/cpuinfo").readLines().forEach { line ->
                 if (line.contains("Hardware") || line.contains("model name") || line.contains("Processor")) {
-                    val model = line.split(":")[1].trim()
-                    if (model.isNotEmpty()) {
-                        cachedCpuModel = model
-                        return model
+                    val parts = line.split(":", limit = 2)
+                    if (parts.size >= 2) {
+                        val model = parts[1].trim()
+                        if (model.isNotEmpty()) {
+                            cachedCpuModel = model
+                            return model
+                        }
                     }
                 }
             }
         } catch (e: Exception) {}
-        return "Generic ARM Processor"
+        cachedCpuModel = "Generic ARM Processor"
+        return cachedCpuModel!!
     }
 
     private fun getCpuUsagePerCore(): JSONObject {

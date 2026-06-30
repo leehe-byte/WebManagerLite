@@ -36,7 +36,10 @@ class AtManager {
             while (isInput.readLine().also { line = it } != null) {
                 output.append(line).append("\n")
             }
-            process.waitFor()
+            if (!process.waitFor(10, java.util.concurrent.TimeUnit.SECONDS)) {
+                process.destroy()
+                return "(timeout)"
+            }
             return output.toString().trim()
         } catch (e: Exception) {
             Log.e(TAG, "Root command error: ${e.message}")

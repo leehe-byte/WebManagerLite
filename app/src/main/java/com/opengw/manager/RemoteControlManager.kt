@@ -64,6 +64,18 @@ class RemoteControlManager {
         streamingJob?.cancel()
     }
 
+    fun stop() {
+        stopStreaming()
+        try {
+            inputWriter?.close()
+            inputProcess?.destroy()
+        } catch (e: Exception) {
+            Log.e(TAG, "Cleanup error: ${e.message}")
+        }
+        inputWriter = null
+        inputProcess = null
+    }
+
     fun injectInput(action: String, x: Int, y: Int, x2: Int = 0, y2: Int = 0, key: String? = null) {
         val cmd = when (action) {
             "tap" -> "input tap $x $y\n"
@@ -80,8 +92,10 @@ class RemoteControlManager {
             try {
                 inputWriter?.write(cmd.toByteArray())
                 inputWriter?.flush()
-            } catch (e: Exception) { 
-                startPersistentShell() 
+            } catch (e: Exception) {
+                Log.w(TAG, "Input write failed, restarting shell: ${e.message}")
+                try { inputWriter?.close(); inputProcess?.destroy() } catch (_: Exception) {}
+                startPersistentShell()
             }
         }
     }

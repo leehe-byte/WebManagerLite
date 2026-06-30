@@ -64,10 +64,14 @@ class CoreBackgroundService : Service() {
         startForeground(NOTIFICATION_ID, notification)
     }
 
+    private fun getServerPort(): Int {
+        val sp = getSharedPreferences("server_config", Context.MODE_PRIVATE)
+        return sp.getInt("server_port", 8000)
+    }
+
     private fun startWebServer() {
         if (webServer == null) {
-            val sp = getSharedPreferences("server_config", Context.MODE_PRIVATE)
-            val port = sp.getInt("server_port", 8000)
+            val port = getServerPort()
             webServer = CoreWebServer(this, port)
             webServer?.start()
             Log.i(TAG, "Ktor 服务器已在服务中启动 (端口: $port)")
@@ -105,8 +109,9 @@ class CoreBackgroundService : Service() {
             }
             val jsonBody = org.json.JSONObject(params).toString()
             val body = "postData=${java.net.URLEncoder.encode(jsonBody, "UTF-8")}"
+            val port = getServerPort()
             val request = okhttp3.Request.Builder()
-                .url("http://127.0.0.1:8000/api/proxy/goform/goform_set_cmd_process")
+                .url("http://127.0.0.1:$port/api/proxy/goform/goform_set_cmd_process")
                 .post(body.toRequestBody("application/x-www-form-urlencoded".toMediaType()))
                 .build()
             val response = httpClient!!.newCall(request).execute()
@@ -125,8 +130,9 @@ class CoreBackgroundService : Service() {
                     .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
                     .build()
             }
+            val port = getServerPort()
             val request = okhttp3.Request.Builder()
-                .url("http://127.0.0.1:8000/api/proxy$path")
+                .url("http://127.0.0.1:$port/api/proxy$path")
                 .get()
                 .build()
             val response = httpClient!!.newCall(request).execute()

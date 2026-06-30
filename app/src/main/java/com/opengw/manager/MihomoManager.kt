@@ -78,18 +78,18 @@ class MihomoManager {
             val base64Content = android.util.Base64.encodeToString(content.toByteArray(Charsets.UTF_8), android.util.Base64.NO_WRAP)
             val result = runRootCommand("echo '$base64Content' | base64 -d > $tmpPath && chmod 644 $tmpPath && cp $tmpPath $CONFIG_PATH && rm -f $tmpPath")
             if (result.contains("error") || result.contains("No such") || result.contains("not found")) {
-                // 如果 base64 不可用，用 printf + 重定向方式
+                // 如果 base64 不可用，用 printf + 重定向分块写入
                 runRootCommand("rm -f $tmpPath")
-                // 分块写入避免 shell 参数长度限制
                 val chunkSize = 200
-                val lines_list = content.chunked(chunkSize)
-                for (chunk in lines_list) {
+                val chunks = content.chunked(chunkSize)
+                for ((i, chunk) in chunks.withIndex()) {
                     val escaped = chunk
                         .replace("\\", "\\\\")
                         .replace("'", "'\\''")
                         .replace("\n", "\\n")
                         .replace("\r", "\\r")
-                    runRootCommand("printf '%s' '$escaped' >> $tmpPath")
+                    val redirect = if (i == 0) ">" else ">>"
+                    runRootCommand("printf '%s' '$escaped' $redirect $tmpPath")
                 }
                 val result2 = runRootCommand("chmod 644 $tmpPath && cp $tmpPath $CONFIG_PATH && rm -f $tmpPath")
                 return if (result2.contains("error") || result2.contains("No such")) {
@@ -530,7 +530,10 @@ class MihomoManager {
             while (isInput.readLine().also { line = it } != null) {
                 output.append(line).append("\n")
             }
-            process.waitFor()
+            if (!process.waitFor(10, java.util.concurrent.TimeUnit.SECONDS)) {
+                process.destroy()
+                return "(timeout)"
+            }
             return output.toString().trim()
         } catch (e: Exception) {
             return ""

@@ -31,7 +31,7 @@ import android.os.BatteryManager
  * 终极高性能 Ktor 服务器 - 诊断与投屏增强版 (v1.9.4)
  */
 class CoreWebServer(private val context: Context, private val port: Int) {
-    private val TAG = "TRAFFIC_SNIFFER"
+    private val TAG = "CoreWebServer"
     private val bridge = BridgeProtocol(context)
     private val mihomo = MihomoManager() 
     private val adb = AdbManager() 
@@ -63,18 +63,11 @@ class CoreWebServer(private val context: Context, private val port: Int) {
                         put("android_ver", Build.VERSION.RELEASE)
                         put("uptime", getAndroidUptime())
                         
-                        val batteryIntent = this@CoreWebServer.context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-                        val level = batteryIntent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
-                        val scale = batteryIntent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
-                        val temp = batteryIntent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) ?: 0
-                        val batStatus = batteryIntent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
-                        val isCharging = batStatus == BatteryManager.BATTERY_STATUS_CHARGING || batStatus == BatteryManager.BATTERY_STATUS_FULL
-                        
-                        val batteryPct = if (level != -1 && scale != -1) (level * 100 / scale.toFloat()).toInt() else 0
+                        val (batteryPct, batteryTemp, isCharging) = getBatteryInfo()
                         put("battery_level", batteryPct)
-                        put("battery_temp", temp / 10.0) 
+                        put("battery_temp", batteryTemp / 10.0)
                         put("is_charging", isCharging)
-                        
+
                         batteryStats.updateStats(batteryPct, isCharging)
                         
                         val memInfo = ActivityManager.MemoryInfo()
@@ -316,7 +309,8 @@ class CoreWebServer(private val context: Context, private val port: Int) {
                 }
 
                 post("/api/auth/login") {
-                    val pass = call.request.queryParameters["password"] ?: ""
+                    val body = call.receiveText()
+                    val pass = extractPostData(body).optString("password", "")
                     val result = withContext(Dispatchers.IO) { bridge.doLogin(pass) }
                     if (result == "SUCCESS") {
                         // 保存密码到 SharedPreferences，供后台服务自动开关 WiFi 使用
@@ -331,8 +325,10 @@ class CoreWebServer(private val context: Context, private val port: Int) {
                 }
 
                 post("/api/auth/change-password") {
-                    val oldPwd = call.request.queryParameters["old"] ?: ""
-                    val newPwd = call.request.queryParameters["new"] ?: ""
+                    val body = call.receiveText()
+                    val postData = extractPostData(body)
+                    val oldPwd = postData.optString("old", "")
+                    val newPwd = postData.optString("new", "")
                     val payload = "oldPassword=$oldPwd&newPassword=$newPwd&goformId=CHANGE_PASSWORD"
                     val response = withContext(Dispatchers.IO) { bridge.dispatch("/goform/goform_set_cmd_process", "POST", null, payload) }
                     call.respondText(String(response.bytes), ContentType.Application.Json)
@@ -348,6 +344,18 @@ class CoreWebServer(private val context: Context, private val port: Int) {
                 }
             }
         }.start(wait = false)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun getBatteryInfo(): Triple<Int, Int, Boolean> {
+        val intent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val level = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+        val temp = intent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) ?: 0
+        val status = intent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+        val charging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+        val pct = if (level != -1 && scale != -1) (level * 100 / scale.toFloat()).toInt() else 0
+        return Triple(pct, temp, charging)
     }
 
     private fun getAndroidUptime(): String {
@@ -386,8 +394,9 @@ class CoreWebServer(private val context: Context, private val port: Int) {
         }
     }
 
-    fun stop() { 
-        server?.stop(1000, 2000) 
+    fun stop() {
+        server?.stop(1000, 2000)
         scrcpy.stopServer()
+        remote.stop()
     }
 }

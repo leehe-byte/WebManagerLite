@@ -33,19 +33,28 @@ import android.os.BatteryManager
 class CoreWebServer(private val context: Context, private val port: Int) {
     private val TAG = "CoreWebServer"
     private val bridge = BridgeProtocol(context)
-    private val mihomo = MihomoManager() 
-    private val adb = AdbManager() 
+    private val mihomo = MihomoManager()
+    private val adb = AdbManager()
     private val ttyd = TtydManager()
     private val atManager = AtManager()
     private val remote = RemoteControlManager()
     private val scrcpy = ScrcpyManager(context)
     private val samba = SambaManager()
     private val batteryStats = BatteryStatsManager(context)
-    private val sysStats = SystemStatsManager() // 引入高性能系统统计
+    private val sysStats = SystemStatsManager()
     private var server: ApplicationEngine? = null
 
+    // 缓存高频 API 响应，避免反复读取 /proc 文件消耗 CPU
+    private var cachedStatusJson: String = ""
+    private var cachedStatusTime: Long = 0
+    private var cachedDetailsJson: String = ""
+    private var cachedDetailsTime: Long = 0
+    private val cacheTtlMs = 3000L
+
     fun start() {
-        server = embeddedServer(CIO, port = port, host = "0.0.0.0") {
+        server = embeddedServer(CIO, port = port, host = "0.0.0.0", configure = {
+            connectionIdleTimeoutSeconds = 60
+        }) {
             install(CallLogging) { level = Level.INFO }
             install(WebSockets) {
                 pingPeriod = java.time.Duration.ofSeconds(15)
@@ -56,6 +65,11 @@ class CoreWebServer(private val context: Context, private val port: Int) {
 
             routing {
                 get("/api/status") {
+                    val now = System.currentTimeMillis()
+                    if (cachedStatusJson.isNotEmpty() && now - cachedStatusTime < cacheTtlMs) {
+                        call.respondText(cachedStatusJson, ContentType.Application.Json)
+                        return@get
+                    }
                     val status = JSONObject().apply {
                         put("model", Build.MODEL)
                         put("manufacturer", Build.MANUFACTURER)
@@ -86,12 +100,21 @@ class CoreWebServer(private val context: Context, private val port: Int) {
                         put("storage_usage", ((totalStorage - availStorage) * 100 / totalStorage).toInt())
                         put("cpu_usage", sysStats.getDetailedStats().optJSONObject("cpu")?.optInt("total_usage", 5) ?: 5)
                     }
-                    call.respondText(status.toString(), ContentType.Application.Json)
+                    cachedStatusJson = status.toString()
+                    cachedStatusTime = System.currentTimeMillis()
+                    call.respondText(cachedStatusJson, ContentType.Application.Json)
                 }
 
                 // 高精度性能详情 API
                 get("/api/system/details") {
-                    call.respondText(sysStats.getDetailedStats().toString(), ContentType.Application.Json)
+                    val now = System.currentTimeMillis()
+                    if (cachedDetailsJson.isNotEmpty() && now - cachedDetailsTime < cacheTtlMs) {
+                        call.respondText(cachedDetailsJson, ContentType.Application.Json)
+                        return@get
+                    }
+                    cachedDetailsJson = sysStats.getDetailedStats().toString()
+                    cachedDetailsTime = now
+                    call.respondText(cachedDetailsJson, ContentType.Application.Json)
                 }
 
                 get("/api/battery/history") {
@@ -127,6 +150,9 @@ class CoreWebServer(private val context: Context, private val port: Int) {
                         scrcpy.handleWebSocket(this)
                     } catch (e: Exception) {
                         Log.e("WS_SCRCPY", "Error: ${e.message}")
+                    } finally {
+                        // 修复：WS 断开时回收 scrcpy-server，避免 CPU 持续占用
+                        scrcpy.stopServer()
                     }
                 }
 

@@ -92,7 +92,7 @@ class CoreBackgroundService : Service() {
         usbDetectScheduler = Executors.newSingleThreadScheduledExecutor()
         usbDetectScheduler?.scheduleAtFixedRate({
             checkUsbAndSwitchWifi()
-        }, 0, 2, TimeUnit.SECONDS)
+        }, 2, 5, TimeUnit.SECONDS)
     }
 
     /**

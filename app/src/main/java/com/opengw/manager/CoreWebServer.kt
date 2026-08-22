@@ -355,24 +355,41 @@ class CoreWebServer(private val context: Context, private val port: Int) {
                     var installed = JSONObject().put("result", "error").put("msg", "未收到文件")
                     try {
                         val multipart = call.receiveMultipart()
-                        var part = multipart.readPart()
-                        while (part != null) {
-                            if (part is PartData.FileItem) {
-                                // 先固定为不可变局部变量，供闭包内安全引用
-                                val item = part
+                        while (true) {
+                            val current = multipart.readPart() ?: break
+                            if (current is PartData.FileItem) {
                                 // 在 IO 线程读取，避免 streamProvider 内部 runBlocking 阻塞 CIO 事件循环，
                                 // 导致大文件上传读取不完整
-                                val bytes = withContext(Dispatchers.IO) { item.streamProvider().readBytes() }
-                                installed = plugins.installFromBytes(bytes, item.originalFileName ?: "plugin${PluginManager.EXT}")
+                                val bytes = withContext(Dispatchers.IO) { current.streamProvider().readBytes() }
+                                installed = plugins.installFromBytes(bytes, current.originalFileName ?: "plugin${PluginManager.EXT}")
                             }
-                            part.dispose()
-                            part = multipart.readPart()
+                            current.dispose()
                         }
                     } catch (e: Exception) {
                         Log.e("PLUGIN_API", "安装异常", e)
                         installed = JSONObject().put("result", "error").put("msg", e.message ?: "安装异常")
                     }
                     call.respondText(installed.toString(), ContentType.Application.Json)
+                }
+
+                post("/api/plugins/preview") {
+                    if (!checkAuth(call)) return@post
+                    var preview = JSONObject().put("result", "error").put("msg", "未收到文件")
+                    try {
+                        val multipart = call.receiveMultipart()
+                        while (true) {
+                            val current = multipart.readPart() ?: break
+                            if (current is PartData.FileItem) {
+                                val bytes = withContext(Dispatchers.IO) { current.streamProvider().readBytes() }
+                                preview = plugins.preview(bytes, current.originalFileName ?: "plugin${PluginManager.EXT}")
+                            }
+                            current.dispose()
+                        }
+                    } catch (e: Exception) {
+                        Log.e("PLUGIN_API", "预览异常", e)
+                        preview = JSONObject().put("result", "error").put("msg", e.message ?: "预览异常")
+                    }
+                    call.respondText(preview.toString(), ContentType.Application.Json)
                 }
 
                 post("/api/plugins/install-url") {

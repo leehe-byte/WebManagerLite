@@ -31,6 +31,7 @@ my-plugin.owpkg  (zip)
   "id": "my-plugin",              // 必填，仅 [A-Za-z0-9_-]
   "name": "我的插件",
   "version": "1.0.0",
+  "versionCode": 100,             // 建议：数值版本号，用于程序化比较/升级判断
   "icon": "🧩",
   "description": "一句话描述",
   "requiresRoot": true,           // 是否需要 root 权限
@@ -85,6 +86,7 @@ PluginRegistry.register({
 - 菜单分组 `menu.section` 与现有分组同名会自动合并（如「应用服务」），否则在侧边栏底部新建；`menu: false` 可完全隐藏。
 - 卡片容器 id 约定为 `plugin-card-body-{pluginId}-{cardId}`，`render()` 在 overview 页按 `refreshMs` 轮询调用。
 - 页面内联 `<script>` 会自动执行（框架手动补挂载），但推荐把逻辑都放入口脚本。
+- **缓存机制**：入口 JS（entryJs）每个 app 会话只加载一次（`scriptsLoaded` 标记）；**重装/更新插件后 app 会自动重置该标记并重新拉取新版**。为彻底绕开任何缓存，**强烈建议 entryJs 用版本化文件名**，如 `"entryJs": "plugin-1.1.8.js"`（每版本换新文件名）。
 
 ## 4. 通用能力 API
 
@@ -108,6 +110,13 @@ await Api.post('/api/plugins/my-plugin/config', { note: 'hello' });
 const cfg = await Api.get('/api/plugins/my-plugin/config');
 ```
 
+### 响应格式与局限
+
+- **/exec** 返回 `{result, output}`，`output` 是 **trim 后的 stdout 文本**；若命令输出 JSON，前端用 `JSON.parse(res.output)`。
+- **JSON 输出规范**：exec 脚本要输出 JSON 时，**空值必须输出 `null`**（如 `"mem":null`），不能留空（`"mem":,` 是非法 JSON，前端解析直接失败）。
+- **/file** 的 `content` 是**原始文本**（UTF-8），适合小配置/文本；**二进制/大文件不适用**——可放 `bin/` 随包部署，或前端 base64 编码后 exec `base64 -d` 落盘。
+- **WebSocket/实时能力**：当前通用能力 API **不提供 WebSocket**；实时刷新（终端/串口）可轮询 `/exec` 实现，双向流需插件自起服务并复用已开放的端口。
+
 ### 静态资源
 
 `www/` 目录下的文件通过 `GET /plugins/{id}/www/*` 提供访问。
@@ -128,6 +137,8 @@ const cfg = await Api.get('/api/plugins/my-plugin/config');
   } > /dev/null 2>&1 &
   exit 0
   ```
+
+- **携带依赖二进制**：把二进制放入 `bin/`（安装时自动 chmod 755）；`install.sh` 负责把它复制到系统/数据目录（如 `/data/my-plugin/bin/`），运行脚本再引用该路径。
 
 ## 6. 打包、签名与安装
 
@@ -162,3 +173,10 @@ const cfg = await Api.get('/api/plugins/my-plugin/config');
 - **签名**：发布插件建议签名（见第 6 节）；未签名插件安装时会标记提示。
 - **路径**：插件安装于 `filesDir/plugins/<id>/`，安装包内路径请使用正斜杠。
 - **免重启**：部署通过 root 直接落盘，不依赖 Magisk 挂载，无需重启。
+
+## 8. 调试
+
+- 浏览器按 **F12** 打开控制台，查看插件 JS 的报错与 `console.log`。
+- 确认加载的是最新 JS：看插件页面版本徽标，或控制台 Network 里 entryJs 请求 URL（带 `?_=<时间戳>` 即为新拉取）。
+- 插件后端命令的输出通过 `/exec` 返回，可在插件页的 `console` 里打印 `res.output` 排查。
+- 若怀疑缓存导致旧代码，重装插件即可（app 会自动重置加载标记）；仍异常则强制停止并重开 app。

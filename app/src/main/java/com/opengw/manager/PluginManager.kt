@@ -187,6 +187,35 @@ class PluginManager(private val context: Context) {
         return result.put("result", "success")
     }
 
+    /** 预览插件包：解析 manifest 返回摘要信息（不安装、不落盘） */
+    fun preview(bytes: ByteArray, fileName: String): JSONObject {
+        val result = JSONObject()
+        if (!fileName.endsWith(EXT)) {
+            return result.put("result", "error").put("msg", "插件格式不正确，需要 $EXT 文件")
+        }
+        val tmpDir = File(rootDir, ".tmp-preview-${System.currentTimeMillis()}")
+        try {
+            tmpDir.mkdirs()
+            if (!extractZip(bytes, tmpDir)) return result.put("result", "error").put("msg", "解压失败，文件可能损坏")
+            val manifest = parseManifest(tmpDir)
+            if (manifest == null) return result.put("result", "error").put("msg", "manifest.json 无效或缺失（需 id 与 entryJs 字段）")
+            return result.put("result", "success")
+                .put("id", manifest.optString("id"))
+                .put("name", manifest.optString("name"))
+                .put("version", manifest.optString("version"))
+                .put("versionCode", manifest.optInt("versionCode", 0))
+                .put("icon", manifest.optString("icon"))
+                .put("description", manifest.optString("description"))
+                .put("requiresRoot", manifest.optBoolean("requiresRoot", false))
+                .put("signed", manifest.optBoolean("signed", false))
+        } catch (e: Exception) {
+            Log.e(TAG, "预览失败", e)
+            return result.put("result", "error").put("msg", e.message ?: "解析失败")
+        } finally {
+            if (tmpDir.exists()) tmpDir.deleteRecursively()
+        }
+    }
+
     // ==================== 启停 ====================
 
     fun start(id: String): JSONObject = runScriptApi(id, "start")

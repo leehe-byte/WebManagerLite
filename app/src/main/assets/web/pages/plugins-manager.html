@@ -13,6 +13,9 @@
         </div>
         <div id="plugin-install-status" style="display:none; margin-top:10px; padding:8px 10px; border-radius:6px; background:rgba(24,144,255,0.08); border:1px solid rgba(24,144,255,0.2); font-size:13px; color:var(--primary);">
             <span id="plugin-install-status-icon">⏳</span> <span id="plugin-install-status-text">正在安装...</span>
+            <div style="margin-top:8px; height:6px; background:rgba(24,144,255,0.15); border-radius:3px; overflow:hidden;">
+                <div id="plugin-install-bar" style="height:100%; width:0%; background:var(--primary); transition:width 0.5s;"></div>
+            </div>
         </div>
     </div>
 </div>

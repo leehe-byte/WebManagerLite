@@ -27,11 +27,11 @@ const PluginRegistry = {
         return this.plugins;
     },
 
-    /** 动态加载插件脚本 */
+    /** 动态加载插件脚本（带时间戳防浏览器/WebView 缓存旧版） */
     loadScript(src) {
         return new Promise((resolve, reject) => {
             const s = document.createElement('script');
-            s.src = src;
+            s.src = src + (src.includes('?') ? '&' : '?') + '_=' + Date.now();
             s.onload = resolve;
             s.onerror = () => {
                 console.error('插件脚本加载失败:', src);

@@ -46,29 +46,67 @@ const PluginsManagerModule = {
     },
 
     async upload(file) {
-        this.setInstalling(true, '正在上传并安装插件，请稍候...');
-        const form = new FormData();
-        form.append('file', file);
+        if (!file) return;
         const headers = {};
         const token = sessionStorage.getItem('authToken');
         if (token) headers['X-Auth-Token'] = token;
+
+        // 1. 预览解析插件信息（不安装）
+        this.setInstalling(true, '正在解析插件包...', 30);
+        let info;
         try {
-            const resp = await fetch('/api/plugins/install', { method: 'POST', headers, body: form });
-            const res = await resp.json();
+            const form = new FormData();
+            form.append('file', file);
+            const resp = await fetch('/api/plugins/preview', { method: 'POST', headers, body: form });
+            info = await resp.json();
+        } catch (e) {
             this.setInstalling(false);
+            await showAlert('解析插件失败: ' + escapeHtml(e.message));
+            this.resetFileInput();
+            return;
+        }
+        if (!info || info.result !== 'success') {
+            this.setInstalling(false);
+            await showAlert('插件包解析失败: ' + escapeHtml(info?.msg || '未知错误'));
+            this.resetFileInput();
+            return;
+        }
+
+        // 2. 确认框展示插件信息
+        const infoHtml = `
+            <div style="text-align:center; margin-bottom:12px;">
+                <div style="font-size:32px; line-height:1.2;">${escapeHtml(info.icon || '🧩')}</div>
+                <div style="font-size:16px; font-weight:bold; margin-top:4px;">${escapeHtml(info.name || info.id)}</div>
+                <div style="font-size:12px; color:var(--text-sub); margin-top:2px;">v${escapeHtml(info.version || '?')} · ${escapeHtml(info.id)} ${info.signed ? '<span style="color:var(--success);">✅ 已签名</span>' : '<span style="color:#faad14;">⚠️ 未签名</span>'}${info.requiresRoot ? ' · <span style="color:#fa8c16;">需 root</span>' : ''}</div>
+            </div>
+            <div style="font-size:12px; color:var(--text-sub); text-align:left; line-height:1.7; border-top:1px solid var(--border-color); padding-top:10px;">${escapeHtml(info.description || '（无描述）')}</div>`;
+        const ok = await showConfirm(infoHtml, '确认安装插件');
+        if (!ok) {
+            this.setInstalling(false);
+            this.resetFileInput();
+            return;
+        }
+
+        // 3. 正式安装
+        this.setInstalling(true, '正在安装，请稍候...', 90);
+        try {
+            const form2 = new FormData();
+            form2.append('file', file);
+            const resp2 = await fetch('/api/plugins/install', { method: 'POST', headers, body: form2 });
+            const res = await resp2.json();
             if (res.result === 'success') {
+                await this.applyInstall(res);
                 await showAlert(`插件 <b>${escapeHtml(res.plugin?.name || '')}</b> 安装成功！` + this.outputHtml(res));
             } else {
                 await showAlert('安装失败: ' + escapeHtml(res.msg || '未知错误'));
             }
         } catch (e) {
-            this.setInstalling(false);
             await showAlert('安装请求失败: ' + escapeHtml(e.message));
         }
+        this.setInstalling(false);
         this.list();
         if (typeof window.renderPluginNav === 'function') window.renderPluginNav();
-        const fileInput = document.getElementById('plugin-file-input');
-        if (fileInput) fileInput.value = '';
+        this.resetFileInput();
     },
 
     async installFromUrl() {
@@ -77,11 +115,12 @@ const PluginsManagerModule = {
             await showAlert('请输入插件下载 URL');
             return;
         }
-        this.setInstalling(true, '正在下载并安装插件，请稍候...');
+        this.setInstalling(true, '正在下载并安装插件，请稍候...', 90);
         try {
             const res = await Api.post('/api/plugins/install-url', { url });
             this.setInstalling(false);
             if (res.result === 'success') {
+                await this.applyInstall(res);
                 await showAlert(`插件 <b>${escapeHtml(res.plugin?.name || '')}</b> 安装成功！` + this.outputHtml(res));
             } else {
                 await showAlert('安装失败: ' + escapeHtml(res.msg || ''));
@@ -94,16 +133,23 @@ const PluginsManagerModule = {
         if (typeof window.renderPluginNav === 'function') window.renderPluginNav();
     },
 
-    /** 安装期间显示状态条并禁用操作 */
-    setInstalling(active, text) {
+    /** 安装期间显示状态条 + 进度条并禁用操作 */
+    setInstalling(active, text, pct) {
         const box = document.getElementById('plugin-install-status');
         const txt = document.getElementById('plugin-install-status-text');
+        const bar = document.getElementById('plugin-install-bar');
         const fileInput = document.getElementById('plugin-file-input');
         const urlBtn = document.getElementById('plugin-install-url-btn');
         if (box) box.style.display = active ? 'block' : 'none';
         if (txt) txt.textContent = text || '正在安装...';
+        if (bar) bar.style.width = active ? (pct || 90) + '%' : '0%';
         if (fileInput) fileInput.disabled = active;
         if (urlBtn) urlBtn.disabled = active;
+    },
+
+    resetFileInput() {
+        const fileInput = document.getElementById('plugin-file-input');
+        if (fileInput) fileInput.value = '';
     },
 
     /** 安装脚本输出（install.sh 的回显），转成弹窗里的 pre 展示 */
@@ -120,8 +166,32 @@ const PluginsManagerModule = {
         const ok = await showConfirm(`确定卸载插件 <b>${escapeHtml(id)}</b>？此操作不可恢复。`);
         if (!ok) return;
         const res = await Api.post(`/api/plugins/${id}/uninstall`);
+        if (res.result === 'success') {
+            // 清除插件前端状态，避免下次安装加载旧 JS
+            delete PluginRegistry.scriptsLoaded[id];
+            delete PluginRegistry.registered[id];
+        }
         await showAlert(res.result === 'success' ? '已卸载' : '卸载失败: ' + escapeHtml(res.msg || ''));
         this.list();
+        if (typeof window.renderPluginNav === 'function') window.renderPluginNav();
+    },
+
+    /**
+     * 安装成功后清除旧 JS 缓存并强制加载新版，
+     * 解决「重装插件后前端仍运行旧版 plugin.js」的问题。
+     */
+    async applyInstall(res) {
+        if (!res || res.result !== 'success' || !res.plugin || !res.plugin.id) return;
+        const id = res.plugin.id;
+        delete PluginRegistry.scriptsLoaded[id];
+        delete PluginRegistry.registered[id];
+        if (res.plugin.entryJs) {
+            try {
+                await PluginRegistry.loadScript(`/plugins/${id}/www/${res.plugin.entryJs}`);
+            } catch (e) {
+                console.error('加载新版插件 JS 失败:', id, e);
+            }
+        }
         if (typeof window.renderPluginNav === 'function') window.renderPluginNav();
     }
 };

@@ -2,7 +2,7 @@
 
 插件系统为 OpenGW 提供了类 OpenWrt/LuCI 的扩展能力：**外部安装、免重启、热更新**。插件包是一个 `.owpkg` 文件（本质是 zip 压缩包），安装后即可向管理页添加侧边栏菜单、独立页面、状态总览卡片，并调用系统通用能力 API。
 
-一个最简可用的示例见 `examples/demo-plugin/`，发布态插件示例见 `releases/mihomo/`。
+最小可用的示例见 `examples/demo-plugin/`。打包与签名使用项目内置脚本 `scripts/build_plugin.sh`（见第 6 节）。
 
 ---
 
@@ -92,7 +92,7 @@ PluginRegistry.register({
 
 | 接口 | 方法 | 说明 |
 |---|---|---|
-| `/exec` | POST `{"command":"..."}` | **root** 执行命令，返回 `{result, output}`；cwd 限定为插件目录 |
+| `/exec` | POST `{"command":"..."}` | **root** 执行命令，返回 `{result, output}`；cwd 限定插件目录；命令 ≤ 4096 字符、10s 超时 |
 | `/config` | GET / POST `{"k":"v"}` | 插件 KV 配置（存于插件目录 config.json） |
 | `/file` | GET `?path=` / POST `{"path","content"}` | 读写插件私有目录内的文件（防路径穿越） |
 | `/start` `/stop` `/restart` | POST | 执行对应生命周期脚本 |
@@ -129,23 +129,36 @@ const cfg = await Api.get('/api/plugins/my-plugin/config');
   exit 0
   ```
 
-## 6. 打包与安装
+## 6. 打包、签名与安装
+
+推荐使用项目内置脚本 `scripts/build_plugin.sh` 打包（自动压缩为 zip，并可选做 RSA 签名）：
 
 ```bash
-# 用 zip 工具把 manifest.json / www / bin / files / scripts 打包为 .owpkg
-zip -r my-plugin.owpkg manifest.json www bin files scripts
+# 打包 + 签名（私钥默认取 releases/keys/private.pem）
+./scripts/build_plugin.sh <插件目录> my-plugin.owpkg releases/keys/private.pem
+
+# 不签名打包（示例/本地测试用）
+./scripts/build_plugin.sh <插件目录> my-plugin.owpkg none
 ```
+
+签名策略（可选签名）：
+
+- **带签名**：脚本会对 `manifest.json` 做 `SHA256withRSA` 签名，将 `signature.sig` 写入包内；安装时用 APK 内嵌公钥校验，**篡改或签名不匹配将拒绝安装**。
+- **无签名**：可以正常安装，但插件列表与安装结果会标记「⚠️ 未签名」。
+- 私钥需妥善保管（丢失后需重新生成密钥对并替换 APK 内公钥）；公钥编译在 APK 内。
 
 安装方式：
 
 1. 管理页「插件管理」→ 上传 `.owpkg` 文件；
-2. 或填写 URL 远程拉取安装。
+2. 或填写 URL 远程拉取安装（**仅支持公网 http/https，禁止本机/内网地址**）。
 
-安装时会校验扩展名 `.owpkg` 与 `manifest.json`（必须含 `id`、`entryJs`），随后执行 install.sh 完成部署。
+安装时会校验扩展名 `.owpkg`、`manifest.json`（必须含 `id`、`entryJs`）与签名，随后执行 `install.sh` 完成部署，并回显 `install.sh` 的输出。
 
 ## 7. 注意事项
 
-- **鉴权**：exec / config / file / install 等敏感接口要求请求头携带 `X-Auth-Token`（框架的 `Api` 会自动附加）。
-- **安全**：`/exec` 是 root 级命令执行，插件应做好命令参数校验；`/file` 已被限定在插件目录内。
+- **全 API 鉴权**：所有 `/api/*` 均要求登录会话（官方密码登录后下发 token）。框架的 `Api` 与插件入口会自动附加 `X-Auth-Token`，插件内部请求请统一走 `Api`。
+- **安全**：`/exec` 是 root 级命令执行，命令长度上限 4096、10s 超时，插件应做好命令参数校验；`/file` 已被限定在插件目录内（防路径穿越）。
+- **URL 安装**：仅公网 http/https，禁止本机/内网地址（SSRF 防护）。
+- **签名**：发布插件建议签名（见第 6 节）；未签名插件安装时会标记提示。
 - **路径**：插件安装于 `filesDir/plugins/<id>/`，安装包内路径请使用正斜杠。
 - **免重启**：部署通过 root 直接落盘，不依赖 Magisk 挂载，无需重启。

@@ -111,7 +111,7 @@ class CoreBackgroundService : Service() {
             val body = "postData=${java.net.URLEncoder.encode(jsonBody, "UTF-8")}"
             val port = getServerPort()
             val request = okhttp3.Request.Builder()
-                .url("http://127.0.0.1:$port/api/proxy/goform/goform_set_cmd_process")
+                .url("http://127.0.0.1:$port/api/proxy$path")
                 .post(body.toRequestBody("application/x-www-form-urlencoded".toMediaType()))
                 .build()
             val response = httpClient!!.newCall(request).execute()

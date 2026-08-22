@@ -163,7 +163,7 @@ class ScrcpyManager(private val context: Context) {
 
     private suspend fun connectWithRetry(name: String, retries: Int = 20): LocalSocket {
         var lastError: Exception? = null
-        repeat(retries) { i ->
+        repeat(retries) { _ ->
             try {
                 val socket = LocalSocket()
                 socket.connect(LocalSocketAddress(name, LocalSocketAddress.Namespace.ABSTRACT))

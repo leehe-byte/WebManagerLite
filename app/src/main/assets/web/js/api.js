@@ -7,6 +7,8 @@ const Api = {
         const headers = {
             'X-Requested-With': 'XMLHttpRequest'
         };
+        const token = sessionStorage.getItem('authToken');
+        if (token) headers['X-Auth-Token'] = token;
 
         let body = null;
         if (data && method === 'POST') {
@@ -55,6 +57,7 @@ const Api = {
             const data = await response.json();
             if (data.result === 0) {
                 sessionStorage.setItem('isLoggedIn', 'true');
+                if (data.token) sessionStorage.setItem('authToken', data.token);
                 return true;
             }
             return false;

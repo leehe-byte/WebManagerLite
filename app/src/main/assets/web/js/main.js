@@ -23,7 +23,9 @@ let dataStore = {
 };
 
 async function initAppEngine() {
+    await PluginRegistry.loadPlugins();
     initNavigation();
+    renderPluginNav();
     initMobileEvents();
     initModalControls();
     initThemeControl();
@@ -116,19 +118,51 @@ async function loadPage(pageId) {
     if (typeof OverviewModule !== 'undefined') OverviewModule.stop();
     if (typeof NetInfoModule !== 'undefined') NetInfoModule.stop();
 
+    // 1. 内置页面
+    let html = null;
     try {
         const response = await fetch(`pages/${pageId}.html`);
-        if (!response.ok) throw new Error('Page not found');
-        const html = await response.text();
-        contentArea.innerHTML = html;
+        if (response.ok) html = await response.text();
+    } catch (e) { /* 继续尝试插件页 */ }
 
-        updateActiveNavItem(pageId);
-        initPageLogic(pageId);
-
-        if (window.location.hash !== '#' + pageId) history.replaceState(null, '', '#' + pageId);
-    } catch (e) {
-        contentArea.innerHTML = `<div class="card"><p style="color:red">页面加载失败: ${escapeHtml(pageId)}</p></div>`;
+    // 2. 插件页面
+    if (!html) {
+        const plugin = PluginRegistry.getPlugin(pageId);
+        if (plugin && plugin.page) {
+            try {
+                const response = await fetch(`/plugins/${pageId}/www/${plugin.page}`);
+                if (response.ok) html = await response.text();
+            } catch (e) { /* 忽略 */ }
+        }
     }
+
+    if (!html) {
+        contentArea.innerHTML = `<div class="card"><p style="color:red">页面加载失败: ${escapeHtml(pageId)}</p></div>`;
+        return;
+    }
+    contentArea.innerHTML = html;
+
+    // 给通过 <img> 加载的 /api/ 资源附加 token（img 标签无法带自定义 header）
+    contentArea.querySelectorAll('img[src^="/api/"]').forEach(img => {
+        const raw = img.getAttribute('src');
+        if (raw && !raw.includes('token=')) img.setAttribute('src', authedSrc(raw));
+    });
+
+    // 插件页面的 <script> 不会通过 innerHTML 自动执行，需手动补挂载
+    if (PluginRegistry.getPlugin(pageId)) {
+        contentArea.querySelectorAll('script').forEach(s => {
+            const n = document.createElement('script');
+            if (s.src) n.src = s.src;
+            else n.textContent = s.textContent;
+            document.head.appendChild(n);
+            s.remove();
+        });
+    }
+
+    updateActiveNavItem(pageId);
+    initPageLogic(pageId);
+
+    if (window.location.hash !== '#' + pageId) history.replaceState(null, '', '#' + pageId);
 }
 
 function initPageLogic(pageId) {
@@ -140,15 +174,12 @@ function initPageLogic(pageId) {
         SecurityModule.init();
     } else if (pageId === 'lan' && typeof LanModule !== 'undefined') {
         LanModule.init();
-    } else if (pageId === 'mihomo' && typeof MihomoModule !== 'undefined') {
-        MihomoModule.init();
-        startPolling(() => MihomoModule.syncStatus(), 3000);
     } else if (pageId === 'samba' && typeof SambaModule !== 'undefined') {
         SambaModule.init();
         startPolling(() => SambaModule.syncStatus(), 3000);
-    } else if (pageId === 'adb' && typeof AdbModule !== 'undefined') {
-        AdbModule.init();
-        startPolling(() => AdbModule.syncStatus(), 3000);
+    } else if (pageId === 'usb-port' && typeof UsbPortModule !== 'undefined') {
+        UsbPortModule.init();
+        startPolling(() => UsbPortModule.syncStatus(), 3000);
     } else if (pageId === 'wifi' && typeof WifiModule !== 'undefined') {
         WifiModule.init();
     } else if (pageId === 'sms' && typeof SmsModule !== 'undefined') {
@@ -164,10 +195,30 @@ function initPageLogic(pageId) {
         TerminalModule.init();
     } else if (pageId === 'about') {
         AboutModule.init();
+    } else if (pageId === 'plugins-manager' && typeof PluginsManagerModule !== 'undefined') {
+        PluginsManagerModule.init();
+    } else {
+        // 插件页面：插件入口注册的 init() 由插件自行实现
+        const plugin = PluginRegistry.getPlugin(pageId);
+        if (plugin && typeof plugin.init === 'function') {
+            plugin.init();
+        }
     }
 }
 
 // --- 通用工具函数 ---
+
+/**
+ * 给通过 <img> 等无法携带自定义 header 的资源附加鉴权 token。
+ * 仅对 /api/ 路径生效，后端 checkAuth 支持从 query 读取 token。
+ */
+function authedSrc(src) {
+    const token = sessionStorage.getItem('authToken');
+    if (!token || !src || !src.startsWith('/api/')) return src;
+    const sep = src.indexOf('?') >= 0 ? '&' : '?';
+    return src + sep + 'token=' + encodeURIComponent(token);
+}
+
 function escapeHtml(text) {
     if (!text || typeof text !== 'string') return '';
     return text
@@ -326,6 +377,85 @@ function initNavigation() {
         };
     });
 }
+
+/** 创建单个插件导航项 */
+function makePluginNavItem(p) {
+    const a = document.createElement('a');
+    a.className = 'nav-item plugin-nav-item';
+    a.href = 'javascript:void(0)';
+    a.setAttribute('data-page', p.id);
+    a.innerHTML = `<p>${escapeHtml(p.icon || '🧩')}</p> ${escapeHtml(p.title || p.name || p.id)}`;
+    a.onclick = () => {
+        loadPage(p.id);
+        document.body.classList.remove('sidebar-open');
+    };
+    return a;
+}
+
+/** 归一化分组名用于匹配（去掉空白与控制字符） */
+function normalizeSection(text) {
+    return (text || '').replace(/\s+/g, '').trim();
+}
+
+/**
+ * 渲染插件导航（幂等）。
+ * 分组策略：若已存在同名分组（内置或先前新建），插件项并入其中；否则在底部新建分组。
+ */
+function renderPluginNav() {
+    const nav = document.querySelector('.nav-menu');
+    if (!nav) return;
+
+    // 清理上次插件生成的导航项，避免重复
+    nav.querySelectorAll('.plugin-nav-item').forEach(el => el.remove());
+
+    let container = document.getElementById('plugin-nav');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'plugin-nav';
+        nav.appendChild(container);
+    }
+    container.innerHTML = '';
+
+    // 收集插件分组
+    const groups = {};
+    for (const p of Object.values(PluginRegistry.registered)) {
+        if (p.menu === false) continue;
+        const section = (p.menu && p.menu.section) || '插件';
+        if (!groups[section]) groups[section] = [];
+        groups[section].push(p);
+    }
+
+    // 已存在的分组（静态侧边栏，排除 plugin-nav 容器内）
+    const existingSections = Array.from(nav.querySelectorAll('.nav-section'))
+        .filter(el => !container.contains(el));
+
+    for (const [section, items] of Object.entries(groups)) {
+        const sorted = items.sort((a, b) => ((a.menu && a.menu.order) || 99) - ((b.menu && b.menu.order) || 99));
+
+        const existing = existingSections.find(el => normalizeSection(el.textContent) === normalizeSection(section));
+        if (existing) {
+            const content = existing.nextElementSibling;
+            if (content && content.classList.contains('section-content')) {
+                // 可折叠分组：插入到其 section-content 内
+                sorted.forEach(p => content.appendChild(makePluginNavItem(p)));
+            } else {
+                // 非可折叠分组：插入到分组标题之后、下一分组之前
+                const ref = existing.nextElementSibling;
+                sorted.forEach(p => nav.insertBefore(makePluginNavItem(p), ref));
+            }
+            continue;
+        }
+
+        // 无同名分组：在底部新建
+        const secEl = document.createElement('div');
+        secEl.className = 'nav-section';
+        secEl.textContent = section;
+        container.appendChild(secEl);
+        sorted.forEach(p => container.appendChild(makePluginNavItem(p)));
+    }
+}
+
+window.renderPluginNav = renderPluginNav;
 
 function updateActiveNavItem(pageId) {
     document.querySelectorAll('.nav-item').forEach(l => l.classList.toggle('active', l.getAttribute('data-page') === pageId));

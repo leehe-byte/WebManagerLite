@@ -1,0 +1,15 @@
+{
+  "id": "demo",
+  "name": "示例插件",
+  "version": "1.0.0",
+  "icon": "🧪",
+  "description": "演示插件系统：注册页面、overview 卡片、调用 exec/config 通用能力 API。",
+  "requiresRoot": false,
+  "menu": { "section": "插件", "order": 1 },
+  "page": "page.html",
+  "entryJs": "plugin.js",
+  "cards": [
+    { "id": "status", "title": "设备信息", "icon": "📊", "refreshMs": 5000 }
+  ],
+  "scripts": {}
+}

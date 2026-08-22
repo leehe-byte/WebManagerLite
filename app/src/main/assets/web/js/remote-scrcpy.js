@@ -36,7 +36,8 @@
 
             try {
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                const wsUrl = `${protocol}//${window.location.host}/ws/scrcpy`;
+                const token = sessionStorage.getItem('authToken') || '';
+                const wsUrl = `${protocol}//${window.location.host}/ws/scrcpy?token=${encodeURIComponent(token)}`;
                 this.socket = new WebSocket(wsUrl);
                 this.socket.binaryType = 'arraybuffer';
 

@@ -1,0 +1,17 @@
+<div class="card">
+    <div class="card-header">
+        <h3>🧪 示例插件页面</h3>
+    </div>
+    <div class="card-body">
+        <p style="font-size: 13px; color: var(--text-sub); margin-bottom: 12px;">
+            本页面由插件自身提供（serve 于 /plugins/demo/www/page.html）。点击下方按钮通过 exec 通用能力 API 执行 root 命令。
+        </p>
+        <button id="demo-run-btn" class="btn-primary" style="padding:8px 16px; border:none; border-radius:6px; cursor:pointer;">▶ 执行 uname -a</button>
+        <pre id="demo-output" class="log-area" style="height:120px; background:#000; color:#00ff00; font-size:12px; padding:10px; margin-top:10px;">--</pre>
+
+        <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+            <div style="font-size: 12px; color: var(--text-sub); margin-bottom: 6px;">插件配置（config API 读写）</div>
+            <div id="demo-config-note" style="font-size: 13px;">加载中...</div>
+        </div>
+    </div>
+</div>

@@ -13,6 +13,8 @@ android {
         targetSdk = 33
         versionCode = 35
         versionName = "2.8.0"
+        // 编译产物命名为"应用名-版本-构建类型.apk"，如 OpenGW-2.8.0-release.apk
+        setProperty("archivesBaseName", "${rootProject.name}-${versionName}")
     }
 
     buildTypes {

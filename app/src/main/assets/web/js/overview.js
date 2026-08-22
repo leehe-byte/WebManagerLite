@@ -6,6 +6,7 @@ const OverviewModule = {
     contexts: [],
     isInitialized: false,
     perfTimer: null,
+    cardsTimer: null,
 
     init() {
         this.isInitialized = false;
@@ -14,6 +15,8 @@ const OverviewModule = {
         this.sync();
         if (this.perfTimer) clearInterval(this.perfTimer);
         this.perfTimer = setInterval(() => this.sync(), 2000);
+        PluginRegistry.renderCards();
+        this.startCards();
     },
 
     stop() {
@@ -21,6 +24,20 @@ const OverviewModule = {
             clearInterval(this.perfTimer);
             this.perfTimer = null;
         }
+        if (this.cardsTimer) {
+            clearInterval(this.cardsTimer);
+            this.cardsTimer = null;
+        }
+    },
+
+    /** 按插件声明的最小刷新周期轮询插件卡片 */
+    startCards() {
+        if (this.cardsTimer) clearInterval(this.cardsTimer);
+        this.cardsTimer = null;
+        const cards = PluginRegistry.getCards();
+        if (cards.length === 0) return;
+        const ms = Math.min(5000, ...cards.map(c => c.refreshMs || 5000));
+        this.cardsTimer = setInterval(() => PluginRegistry.refreshCards(), ms);
     },
 
     initCharts(cores) {
@@ -226,7 +243,7 @@ const OverviewModule = {
                     const qrImg = document.getElementById('sys-wifi-qr-img');
                     const qrSection = document.getElementById('sys-wifi-qr-section');
                     if (qrImg && activeAp.QrImageUrl) {
-                        qrImg.src = `/api/proxy${activeAp.QrImageUrl}?_=${Date.now()}`;
+                        qrImg.src = authedSrc(`/api/proxy${activeAp.QrImageUrl}?_=${Date.now()}`);
                         qrSection.style.display = 'block';
                     }
                 }

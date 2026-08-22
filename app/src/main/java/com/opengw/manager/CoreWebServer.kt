@@ -13,6 +13,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
+import io.ktor.http.content.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.consumeEach
 import org.slf4j.event.Level
@@ -33,8 +34,6 @@ import android.os.BatteryManager
 class CoreWebServer(private val context: Context, private val port: Int) {
     private val TAG = "CoreWebServer"
     private val bridge = BridgeProtocol(context)
-    private val mihomo = MihomoManager()
-    private val adb = AdbManager()
     private val ttyd = TtydManager()
     private val atManager = AtManager()
     private val remote = RemoteControlManager()
@@ -42,7 +41,12 @@ class CoreWebServer(private val context: Context, private val port: Int) {
     private val samba = SambaManager()
     private val batteryStats = BatteryStatsManager(context)
     private val sysStats = SystemStatsManager()
+    private val plugins = PluginManager(context)
     private var server: ApplicationEngine? = null
+
+    // 登录防爆破：连续失败 5 次后锁定 60 秒
+    @Volatile private var loginFails = 0
+    @Volatile private var loginLockUntil = 0L
 
     // 缓存高频 API 响应，避免反复读取 /proc 文件消耗 CPU
     private var cachedStatusJson: String = ""
@@ -51,7 +55,38 @@ class CoreWebServer(private val context: Context, private val port: Int) {
     private var cachedDetailsTime: Long = 0
     private val cacheTtlMs = 3000L
 
+    /**
+     * 会话鉴权 token：登录（官方密码）时下发并持久化。
+     * 所有 /api 与 WS 路由统一校验，token 仅登录可获得，不再公开分发。
+     */
+    private fun getSessionToken(): String {
+        val sp = context.getSharedPreferences("plugin_auth", Context.MODE_PRIVATE)
+        var token = sp.getString("token", null)
+        if (token == null || token.length < 16) {
+            token = java.util.UUID.randomUUID().toString()
+            sp.edit().putString("token", token).apply()
+        }
+        return token
+    }
+
+    /** 轮换会话 token（改密码成功后调用），使旧 token 立即失效 */
+    private fun rotateSessionToken() {
+        val sp = context.getSharedPreferences("plugin_auth", Context.MODE_PRIVATE)
+        sp.edit().putString("token", java.util.UUID.randomUUID().toString()).apply()
+    }
+
+    /** 校验请求携带的 token（支持 header 与 query 两种方式，query 供 WebSocket 使用） */
+    private suspend fun checkAuth(call: ApplicationCall): Boolean {
+        val header = call.request.headers["X-Auth-Token"]
+        val query = call.request.queryParameters["token"]
+        if ((header ?: query) == getSessionToken()) return true
+        call.respondText("{\"result\":-401,\"msg\":\"未授权\"}", ContentType.Application.Json)
+        return false
+    }
+
     fun start() {
+        plugins.init()
+        plugins.runBootScripts()
         server = embeddedServer(CIO, port = port, host = "0.0.0.0", configure = {
             connectionIdleTimeoutSeconds = 60
         }) {
@@ -64,6 +99,17 @@ class CoreWebServer(private val context: Context, private val port: Int) {
             }
 
             routing {
+                // 全局鉴权：除登录外，所有 /api/* 与 WS 均需携带会话 token
+                // 字体资源非敏感，放行以便 CSS @font-face 直接加载（CSS 无法携带鉴权头）
+                intercept(io.ktor.server.application.ApplicationCallPipeline.Plugins) {
+                    val path = call.request.path()
+                    val isFont = path.startsWith("/api/proxy/fonts/")
+                    val needAuth = (path.startsWith("/api/") && path != "/api/auth/login") || path == "/ws/scrcpy"
+                    if (needAuth && !isFont && !checkAuth(call)) {
+                        finish()
+                    }
+                }
+
                 get("/api/status") {
                     val now = System.currentTimeMillis()
                     if (cachedStatusJson.isNotEmpty() && now - cachedStatusTime < cacheTtlMs) {
@@ -133,7 +179,7 @@ class CoreWebServer(private val context: Context, private val port: Int) {
                                     y = json.optInt("y"),
                                     x2 = json.optInt("x2", 0),
                                     y2 = json.optInt("y2", 0),
-                                    key = json.optString("key", null)
+                                    key = if (json.has("key")) json.getString("key") else null
                                 )
                             }
                         }
@@ -180,83 +226,6 @@ class CoreWebServer(private val context: Context, private val port: Int) {
                     }
                 }
 
-                // ===== Mihomo 管理 API =====
-                get("/api/mihomo/status") { call.respondText(mihomo.getStatus().toString(), ContentType.Application.Json) }
-                post("/api/mihomo/action") { 
-                    val res = mihomo.doAction(call.request.queryParameters["action"] ?: "", call.request.queryParameters["sub"])
-                    call.respondText(JSONObject().apply { put("result", res) }.toString(), ContentType.Application.Json) 
-                }
-                get("/api/mihomo/log") { call.respondText(mihomo.getLogs(), ContentType.Text.Plain) }
-                
-                // 获取原始 config.yaml 内容（纯文本）
-                get("/api/mihomo/raw-config") {
-                    call.respondText(mihomo.readRawConfig(), ContentType.Text.Plain)
-                }
-                // 获取完整配置（JSON 格式）
-                get("/api/mihomo/config") {
-                    call.respondText(mihomo.getConfigJson(), ContentType.Application.Json)
-                }
-                // 保存完整配置
-                post("/api/mihomo/config") {
-                    val body = call.receiveText()
-                    val postData = extractPostData(body)
-                    val result = mihomo.saveRawConfig(postData.optString("content", ""))
-                    call.respondText(result, ContentType.Application.Json)
-                }
-                // 获取可用 Web UI 列表
-                get("/api/mihomo/webui-list") {
-                    call.respondText(mihomo.getWebUIList(), ContentType.Application.Json)
-                }
-                // 修改基础设置
-                post("/api/mihomo/setting") {
-                    val action = call.request.queryParameters["action"] ?: ""
-                    val value = call.request.queryParameters["value"] ?: ""
-                    call.respondText(mihomo.updateSetting(action, value), ContentType.Application.Json)
-                }
-                // 更新 User-Agent 列表
-                post("/api/mihomo/ua") {
-                    val body = call.receiveText()
-                    val postData = extractPostData(body)
-                    val uas = postData.optJSONArray("user_agents") ?: JSONArray()
-                    call.respondText(mihomo.updateUserAgents(uas), ContentType.Application.Json)
-                }
-                // 获取订阅列表
-                get("/api/mihomo/subs") {
-                    call.respondText(mihomo.getSubscriptions(), ContentType.Application.Json)
-                }
-                // 新增订阅
-                post("/api/mihomo/sub/add") {
-                    val name = call.request.queryParameters["name"] ?: ""
-                    val url = call.request.queryParameters["url"] ?: ""
-                    val ua = call.request.queryParameters["ua"] ?: ""
-                    val interval = call.request.queryParameters["interval"]?.toIntOrNull() ?: 86400
-                    call.respondText(mihomo.addSubscription(name, url, ua, interval), ContentType.Application.Json)
-                }
-                // 删除订阅
-                post("/api/mihomo/sub/remove") {
-                    val name = call.request.queryParameters["name"] ?: ""
-                    call.respondText(mihomo.removeSubscription(name), ContentType.Application.Json)
-                }
-                // 更新订阅 URL
-                post("/api/mihomo/sub/update") {
-                    val name = call.request.queryParameters["name"] ?: ""
-                    val url = call.request.queryParameters["url"] ?: ""
-                    call.respondText(mihomo.updateSubscriptionUrl(name, url), ContentType.Application.Json)
-                }
-                // 更新所有订阅
-                post("/api/mihomo/sub/update-all") {
-                    call.respondText(mihomo.updateAllSubscriptions(), ContentType.Application.Json)
-                }
-                // 编译/检查配置
-                post("/api/mihomo/check") {
-                    val result = mihomo.doAction("check", null)
-                    call.respondText(JSONObject().apply { put("result", result) }.toString(), ContentType.Application.Json)
-                }
-                // 获取最新日志（轮询用）
-                get("/api/mihomo/log/latest") {
-                    val lines = call.request.queryParameters["lines"]?.toIntOrNull() ?: 50
-                    call.respondText(mihomo.getLogs(lines), ContentType.Text.Plain)
-                }
                 // ===== Samba 管理 API（仅配置读写，启停由前端通过 goform 控制）=====
                 get("/api/samba/status") { call.respondText(samba.getStatus().toString(), ContentType.Application.Json) }
                 get("/api/samba/config") { call.respondText(samba.readConfig(), ContentType.Text.Plain) }
@@ -283,8 +252,6 @@ class CoreWebServer(private val context: Context, private val port: Int) {
                     call.respondText(samba.removeShare(name), ContentType.Application.Json)
                 }
 
-                get("/api/adb/status") { call.respondText(adb.getStatus().toString(), ContentType.Application.Json) }
-                post("/api/adb/action") { call.respondText(JSONObject().apply { put("result", adb.doAction(call.request.queryParameters["action"] ?: "")) }.toString(), ContentType.Application.Json) }
                 get("/api/ttyd/status") { call.respondText(ttyd.getStatus().toString(), ContentType.Application.Json) }
                 post("/api/ttyd/start") { call.respondText(JSONObject().apply { put("result", ttyd.start()) }.toString(), ContentType.Application.Json) }
                 post("/api/ttyd/stop") { call.respondText(JSONObject().apply { put("result", ttyd.stop()) }.toString(), ContentType.Application.Json) }
@@ -335,17 +302,25 @@ class CoreWebServer(private val context: Context, private val port: Int) {
                 }
 
                 post("/api/auth/login") {
+                    val now = System.currentTimeMillis()
+                    if (now < loginLockUntil) {
+                        val remain = (loginLockUntil - now) / 1000
+                        call.respondText(JSONObject().put("result", -2).put("msg", "尝试次数过多，请 ${remain} 秒后再试").toString(), ContentType.Application.Json)
+                        return@post
+                    }
+
                     val body = call.receiveText()
                     val pass = extractPostData(body).optString("password", "")
                     val result = withContext(Dispatchers.IO) { bridge.doLogin(pass) }
                     if (result == "SUCCESS") {
-                        // 保存密码到 SharedPreferences，供后台服务自动开关 WiFi 使用
-                        withContext(Dispatchers.IO) {
-                            this@CoreWebServer.context.getSharedPreferences("bridge_config", Context.MODE_PRIVATE)
-                                .edit().putString("password", pass).apply()
-                        }
-                        call.respondText("{\"result\":0, \"token\":\"session-ok\"}", ContentType.Application.Json)
+                        loginFails = 0
+                        call.respondText("{\"result\":0, \"token\":\"${getSessionToken()}\"}", ContentType.Application.Json)
                     } else {
+                        loginFails++
+                        if (loginFails >= 5) {
+                            loginLockUntil = now + 60_000
+                            loginFails = 0
+                        }
                         call.respondText("{\"result\":-1, \"msg\":\"$result\"}", ContentType.Application.Json)
                     }
                 }
@@ -357,12 +332,151 @@ class CoreWebServer(private val context: Context, private val port: Int) {
                     val newPwd = postData.optString("new", "")
                     val payload = "oldPassword=$oldPwd&newPassword=$newPwd&goformId=CHANGE_PASSWORD"
                     val response = withContext(Dispatchers.IO) { bridge.dispatch("/goform/goform_set_cmd_process", "POST", null, payload) }
-                    call.respondText(String(response.bytes), ContentType.Application.Json)
+                    val raw = String(response.bytes)
+                    // 修改成功则轮换 token，使旧会话立即失效
+                    val ok = try {
+                        val j = JSONObject(raw)
+                        val r = j.opt("result")
+                        r == null || r.toString() == "0" || r.toString().equals("success", true)
+                    } catch (e: Exception) {
+                        raw.contains("success") || raw.contains("\"0\"")
+                    }
+                    if (ok) rotateSessionToken()
+                    call.respondText(raw, ContentType.Application.Json)
                 }
 
+                // ===== 插件系统 API =====
+                get("/api/plugins") {
+                    call.respondText(plugins.getPlugins().toString(), ContentType.Application.Json)
+                }
+
+                post("/api/plugins/install") {
+                    if (!checkAuth(call)) return@post
+                    var installed = JSONObject().put("result", "error").put("msg", "未收到文件")
+                    try {
+                        val multipart = call.receiveMultipart()
+                        var part = multipart.readPart()
+                        while (part != null) {
+                            if (part is PartData.FileItem) {
+                                // 先固定为不可变局部变量，供闭包内安全引用
+                                val item = part
+                                // 在 IO 线程读取，避免 streamProvider 内部 runBlocking 阻塞 CIO 事件循环，
+                                // 导致大文件上传读取不完整
+                                val bytes = withContext(Dispatchers.IO) { item.streamProvider().readBytes() }
+                                installed = plugins.installFromBytes(bytes, item.originalFileName ?: "plugin${PluginManager.EXT}")
+                            }
+                            part.dispose()
+                            part = multipart.readPart()
+                        }
+                    } catch (e: Exception) {
+                        Log.e("PLUGIN_API", "安装异常", e)
+                        installed = JSONObject().put("result", "error").put("msg", e.message ?: "安装异常")
+                    }
+                    call.respondText(installed.toString(), ContentType.Application.Json)
+                }
+
+                post("/api/plugins/install-url") {
+                    if (!checkAuth(call)) return@post
+                    val postData = extractPostData(call.receiveText())
+                    val url = postData.optString("url", "")
+                    if (url.isBlank()) {
+                        call.respondText(JSONObject().put("result", "error").put("msg", "URL 不能为空").toString(), ContentType.Application.Json)
+                    } else {
+                        val result = withContext(Dispatchers.IO) { plugins.installFromUrl(url) }
+                        call.respondText(result.toString(), ContentType.Application.Json)
+                    }
+                }
+
+                post("/api/plugins/{id}/uninstall") {
+                    if (!checkAuth(call)) return@post
+                    val result = withContext(Dispatchers.IO) { plugins.uninstall(call.parameters["id"] ?: "") }
+                    call.respondText(result.toString(), ContentType.Application.Json)
+                }
+
+                post("/api/plugins/{id}/start") {
+                    if (!checkAuth(call)) return@post
+                    val result = withContext(Dispatchers.IO) { plugins.start(call.parameters["id"] ?: "") }
+                    call.respondText(result.toString(), ContentType.Application.Json)
+                }
+
+                post("/api/plugins/{id}/stop") {
+                    if (!checkAuth(call)) return@post
+                    val result = withContext(Dispatchers.IO) { plugins.stop(call.parameters["id"] ?: "") }
+                    call.respondText(result.toString(), ContentType.Application.Json)
+                }
+
+                post("/api/plugins/{id}/restart") {
+                    if (!checkAuth(call)) return@post
+                    val result = withContext(Dispatchers.IO) { plugins.restart(call.parameters["id"] ?: "") }
+                    call.respondText(result.toString(), ContentType.Application.Json)
+                }
+
+                post("/api/plugins/{id}/exec") {
+                    if (!checkAuth(call)) return@post
+                    val postData = extractPostData(call.receiveText())
+                    val cmd = postData.optString("command", "")
+                    val result = withContext(Dispatchers.IO) { plugins.exec(call.parameters["id"] ?: "", cmd) }
+                    call.respondText(result.toString(), ContentType.Application.Json)
+                }
+
+                get("/api/plugins/{id}/config") {
+                    if (!checkAuth(call)) return@get
+                    call.respondText(plugins.getConfig(call.parameters["id"] ?: "").toString(), ContentType.Application.Json)
+                }
+
+                post("/api/plugins/{id}/config") {
+                    if (!checkAuth(call)) return@post
+                    val postData = extractPostData(call.receiveText())
+                    val result = plugins.setConfig(call.parameters["id"] ?: "", postData)
+                    call.respondText(result.toString(), ContentType.Application.Json)
+                }
+
+                get("/api/plugins/{id}/file") {
+                    if (!checkAuth(call)) return@get
+                    val id = call.parameters["id"] ?: ""
+                    val path = call.request.queryParameters["path"] ?: ""
+                    val (content, err) = plugins.readFile(id, path)
+                    if (err != null) {
+                        call.respondText(JSONObject().put("result", "error").put("msg", err).toString(), ContentType.Application.Json)
+                    } else {
+                        call.respondText(content ?: "", ContentType.Text.Plain)
+                    }
+                }
+
+                post("/api/plugins/{id}/file") {
+                    if (!checkAuth(call)) return@post
+                    val postData = extractPostData(call.receiveText())
+                    val err = plugins.writeFile(call.parameters["id"] ?: "", postData.optString("path", ""), postData.optString("content", ""))
+                    if (err == null) {
+                        call.respondText("{\"result\":\"success\"}", ContentType.Application.Json)
+                    } else {
+                        call.respondText(JSONObject().put("result", "error").put("msg", err).toString(), ContentType.Application.Json)
+                    }
+                }
+
+                // 兜底静态资源：优先插件 www 目录，否则从 assets/web 读取
+                // （插件静态资源并入此路由，避免 Ktor tailcard 与通配路由的匹配歧义）
                 get("{...}") {
                     val rawPath = call.request.path().removePrefix("/")
                     val path = if (rawPath.isBlank()) "index.html" else rawPath
+                    call.response.headers.append("Cache-Control", "no-cache")
+
+                    // 插件静态资源：/plugins/{id}/www/{...}
+                    if (path.startsWith("plugins/")) {
+                        val parts = path.split("/")
+                        if (parts.size >= 4 && parts[0] == "plugins" && parts[2] == "www") {
+                            val pluginId = parts[1]
+                            val rel = parts.drop(3).joinToString("/")
+                            val file = plugins.getWwwFile(pluginId, rel.ifEmpty { "index.html" })
+                            if (file != null) {
+                                call.respondFile(file)
+                                return@get
+                            }
+                        }
+                        call.respond(HttpStatusCode.NotFound)
+                        return@get
+                    }
+
                     try {
                         val inputStream: InputStream = this@CoreWebServer.context.assets.open("web/$path")
                         call.respondBytes(inputStream.readBytes(), ContentType.parse(getMimeType(path)))

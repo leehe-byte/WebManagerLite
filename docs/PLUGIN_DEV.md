@@ -87,6 +87,22 @@ PluginRegistry.register({
 - 卡片容器 id 约定为 `plugin-card-body-{pluginId}-{cardId}`，`render()` 在 overview 页按 `refreshMs` 轮询调用。
 - 页面内联 `<script>` 会自动执行（框架手动补挂载），但推荐把逻辑都放入口脚本。
 - **缓存机制**：入口 JS（entryJs）每个 app 会话只加载一次（`scriptsLoaded` 标记）；**重装/更新插件后 app 会自动重置该标记并重新拉取新版**。为彻底绕开任何缓存，**强烈建议 entryJs 用版本化文件名**，如 `"entryJs": "plugin-1.1.8.js"`（每版本换新文件名）。
+- **作用域隔离（重要）**：所有插件的 entryJs 都加载进**同一个全局作用域**。顶层 `const/let/var/function` 会互相污染——两个插件若都声明 `const PLUGIN`，后加载的那个会报 `Identifier 'PLUGIN' has already been declared`。**强烈建议入口脚本整体用 IIFE 包裹**，把所有内部常量/函数封闭在局部作用域，仅通过 `PluginRegistry.register()` 对外注册：
+
+  ```js
+  (function () {
+      const PLUGIN = 'my-plugin';   // 局部常量，不影响其它插件
+      const PORT = 8080;
+      const VERSION = '1.0.0';
+
+      PluginRegistry.register({
+          id: PLUGIN, title: '我的插件', icon: '🧩',
+          page: 'page.html',
+          init() { /* ... */ },
+          cards: [ /* ... */ ]
+      });
+  })();
+  ```
 
 ## 4. 通用能力 API
 

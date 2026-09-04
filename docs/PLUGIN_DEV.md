@@ -39,6 +39,7 @@ my-plugin.owpkg  (zip)
   "page": "page.html",            // 插件独立页面（相对 www/ 的路径）
   "entryJs": "plugin.js",         // 必填：入口脚本，将动态加载并执行
   "cards": [                      // 可选：状态总览卡片
+    // refreshMs：轮询间隔(ms)；0 = 仅渲染一次不轮询；overview:false = 不进状态总览
     { "id": "status", "title": "运行状态", "icon": "🛡️", "refreshMs": 5000 }
   ],
   "scripts": {
@@ -85,6 +86,7 @@ PluginRegistry.register({
 
 - 菜单分组 `menu.section` 与现有分组同名会自动合并（如「应用服务」），否则在侧边栏底部新建；`menu: false` 可完全隐藏。
 - 卡片容器 id 约定为 `plugin-card-body-{pluginId}-{cardId}`，`render()` 在 overview 页按 `refreshMs` 轮询调用。
+- 卡片刷新控制：`refreshMs` 缺省 5000；设 `0` 表示**只渲染一次、不轮询**（适合静态信息）；设 `overview: false` 则**不进状态总览**。
 - 页面内联 `<script>` 会自动执行（框架手动补挂载），但推荐把逻辑都放入口脚本。
 - **缓存机制**：入口 JS（entryJs）每个 app 会话只加载一次（`scriptsLoaded` 标记）；**重装/更新插件后 app 会自动重置该标记并重新拉取新版**。为彻底绕开任何缓存，**强烈建议 entryJs 用版本化文件名**，如 `"entryJs": "plugin-1.1.8.js"`（每版本换新文件名）。
 - **作用域隔离（重要）**：所有插件的 entryJs 都加载进**同一个全局作用域**。顶层 `const/let/var/function` 会互相污染——两个插件若都声明 `const PLUGIN`，后加载的那个会报 `Identifier 'PLUGIN' has already been declared`。**强烈建议入口脚本整体用 IIFE 包裹**，把所有内部常量/函数封闭在局部作用域，仅通过 `PluginRegistry.register()` 对外注册：
@@ -102,6 +104,20 @@ PluginRegistry.register({
           cards: [ /* ... */ ]
       });
   })();
+  ```
+- **卡片 `render()` 的 `this` 陷阱**：框架在收集卡片时用 `{...c}` **展开**了卡片对象，因此 `render()` 被调用时 `this` 指向卡片副本，**不是插件对象**——在卡片里调用 `this.xxx`（如 `this.exec`）会报 `TypeError: xxx is not a function`。卡片内请直接用全局 `Api`，不要依赖 `this`；插件的 `exec` 等私有方法只可在 `init()`/页面逻辑（经插件对象调用）里用。
+
+  ```js
+  cards: [{
+      id: 'status', title: '状态', icon: '🛡️', refreshMs: 5000,
+      render() {
+          const el = document.getElementById('plugin-card-body-my-plugin-status');
+          if (!el) return;
+          Api.post('/api/plugins/my-plugin/exec', { command: 'pgrep -x myapp' })
+              .then(res => { el.textContent = (res && res.output) ? '运行中' : '已停止'; })
+              .catch(() => {});
+      }
+  }]
   ```
 
 ## 4. 通用能力 API

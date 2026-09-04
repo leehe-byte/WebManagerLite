@@ -24,6 +24,11 @@
         const isAndroidApp = !!window.AndroidBridge;
         if (isAndroidApp) {
             sessionStorage.setItem('isLoggedIn', 'true');
+            // 从 App 侧直接取鉴权 token，避免等待 onPageFinished 注入造成的加载竞态
+            try {
+                const appToken = window.AndroidBridge.getToken();
+                if (appToken) sessionStorage.setItem('authToken', appToken);
+            } catch (e) {}
         } else if (sessionStorage.getItem('isLoggedIn') !== 'true') {
             window.location.href = 'login.html';
         }
@@ -83,7 +88,7 @@
                 <a href="javascript:void(0)" class="nav-item" data-page="at-command"><p>⚙️</p> AT 指令</a>
                 <a href="javascript:void(0)" class="nav-item" data-page="terminal"><p>💻</p> Web 终端</a>
                 <a href="javascript:void(0)" class="nav-item" data-page="power"><p>⚡</p> 电源管理</a>
-                <a href="javascript:void(0)" class="nav-item" data-page="usb-port"><p>🔌</p> USB 端口</a>
+                <a href="javascript:void(0)" class="nav-item" data-page="usb-port"><p>🔌</p> ADB 控制</a>
             </div>
             
             <!-- 5. 通信 -->

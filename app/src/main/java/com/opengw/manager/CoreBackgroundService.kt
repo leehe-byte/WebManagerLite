@@ -95,6 +95,16 @@ class CoreBackgroundService : Service() {
         }, 2, 5, TimeUnit.SECONDS)
     }
 
+    /** 读取前端保存的 auto_wifi_switch 开关，关闭则不再执行 USB 自动关 WiFi */
+    private fun isAutoWifiSwitchEnabled(): Boolean {
+        return try {
+            val f = java.io.File(filesDir, "auto_wifi_switch.json")
+            if (f.exists()) org.json.JSONObject(f.readText()).optBoolean("enabled", false) else false
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     /**
      * 通过 HTTP 请求 localhost:8000/api/proxy/... 发送请求
      * 完全复用前端路径，避免直接调用 BridgeProtocol 带来的会话问题
@@ -153,6 +163,7 @@ class CoreBackgroundService : Service() {
      *    然后发 ChipEnum=chip1/chip2 开对应频段
      */
     private fun checkUsbAndSwitchWifi() {
+        if (!isAutoWifiSwitchEnabled()) return
         try {
             // 检测 usb0 状态
             val operstateFile = java.io.File("/sys/class/net/usb0/operstate")

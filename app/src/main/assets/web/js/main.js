@@ -120,20 +120,21 @@ async function loadPage(pageId) {
 
     // 1. 内置页面
     let html = null;
-    try {
-        const response = await fetch(`pages/${pageId}.html`);
-        if (response.ok) html = await response.text();
-    } catch (e) { /* 继续尝试插件页 */ }
+    // 1. 插件页面优先（插件 id 不与内置页冲突，避免先请求 pages/*.html 产生 404 噪音）
+    const plugin = PluginRegistry.getPlugin(pageId);
+    if (plugin && plugin.page) {
+        try {
+            const response = await fetch(`/plugins/${pageId}/www/${plugin.page}`);
+            if (response.ok) html = await response.text();
+        } catch (e) { /* 忽略 */ }
+    }
 
-    // 2. 插件页面
+    // 2. 内置页面
     if (!html) {
-        const plugin = PluginRegistry.getPlugin(pageId);
-        if (plugin && plugin.page) {
-            try {
-                const response = await fetch(`/plugins/${pageId}/www/${plugin.page}`);
-                if (response.ok) html = await response.text();
-            } catch (e) { /* 忽略 */ }
-        }
+        try {
+            const response = await fetch(`pages/${pageId}.html`);
+            if (response.ok) html = await response.text();
+        } catch (e) { /* 忽略 */ }
     }
 
     if (!html) {

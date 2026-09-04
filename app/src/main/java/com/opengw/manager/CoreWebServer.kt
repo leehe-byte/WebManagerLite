@@ -35,6 +35,7 @@ class CoreWebServer(private val context: Context, private val port: Int) {
     private val TAG = "CoreWebServer"
     private val bridge = BridgeProtocol(context)
     private val ttyd = TtydManager()
+    private val netAdb = NetAdbManager()
     private val atManager = AtManager()
     private val remote = RemoteControlManager()
     private val scrcpy = ScrcpyManager(context)
@@ -197,8 +198,12 @@ class CoreWebServer(private val context: Context, private val port: Int) {
                     } catch (e: Exception) {
                         Log.e("WS_SCRCPY", "Error: ${e.message}")
                     } finally {
-                        // 修复：WS 断开时回收 scrcpy-server，避免 CPU 持续占用
-                        scrcpy.stopServer()
+                        // 断开清理放到 IO 线程并捕获异常，避免在 Ktor 协程上下文操作进程导致未捕获崩溃
+                        try {
+                            withContext(Dispatchers.IO) { scrcpy.stopServer() }
+                        } catch (e: Exception) {
+                            Log.e("WS_SCRCPY", "Cleanup error: ${e.message}")
+                        }
                     }
                 }
 
@@ -255,6 +260,19 @@ class CoreWebServer(private val context: Context, private val port: Int) {
                 get("/api/ttyd/status") { call.respondText(ttyd.getStatus().toString(), ContentType.Application.Json) }
                 post("/api/ttyd/start") { call.respondText(JSONObject().apply { put("result", ttyd.start()) }.toString(), ContentType.Application.Json) }
                 post("/api/ttyd/stop") { call.respondText(JSONObject().apply { put("result", ttyd.stop()) }.toString(), ContentType.Application.Json) }
+
+                // ===== 网络 ADB 控制 =====
+                get("/api/adb-net/status") {
+                    call.respondText(netAdb.getStatus().toString(), ContentType.Application.Json)
+                }
+                post("/api/adb-net/action") {
+                    if (!checkAuth(call)) return@post
+                    val postData = extractPostData(call.receiveText())
+                    val enable = postData.optBoolean("enable", false)
+                    val port = postData.optInt("port", 5555)
+                    val result = withContext(Dispatchers.IO) { netAdb.setEnabled(enable, port) }
+                    call.respondText(result.toString(), ContentType.Application.Json)
+                }
                 
                 // ===== USB0 状态检测 & WiFi 自动开关 =====
                 get("/api/usb0/status") {

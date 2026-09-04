@@ -30,11 +30,12 @@ const OverviewModule = {
         }
     },
 
-    /** 按插件声明的最小刷新周期轮询插件卡片 */
+    /** 按插件声明的最小刷新周期轮询插件卡片；refreshMs=0 的一次性卡片不进入轮询 */
     startCards() {
         if (this.cardsTimer) clearInterval(this.cardsTimer);
         this.cardsTimer = null;
-        const cards = PluginRegistry.getCards();
+        const cards = PluginRegistry.getCards()
+            .filter(c => (c.refreshMs === undefined ? 5000 : c.refreshMs) > 0);
         if (cards.length === 0) return;
         const ms = Math.min(5000, ...cards.map(c => c.refreshMs || 5000));
         this.cardsTimer = setInterval(() => PluginRegistry.refreshCards(), ms);
@@ -243,7 +244,12 @@ const OverviewModule = {
                     const qrImg = document.getElementById('sys-wifi-qr-img');
                     const qrSection = document.getElementById('sys-wifi-qr-section');
                     if (qrImg && activeAp.QrImageUrl) {
-                        qrImg.src = authedSrc(`/api/proxy${activeAp.QrImageUrl}?_=${Date.now()}`);
+                        // 二维码非实时信息：仅在 URL 变化时加载，避免每次轮询强制重载
+                        const qrSrc = authedSrc(`/api/proxy${activeAp.QrImageUrl}`);
+                        if (qrImg.dataset.url !== qrSrc) {
+                            qrImg.src = qrSrc;
+                            qrImg.dataset.url = qrSrc;
+                        }
                         qrSection.style.display = 'block';
                     }
                 }

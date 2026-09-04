@@ -1,17 +1,41 @@
 <div class="card">
     <div class="card-header">
-        <h3>🔌 USB 端口切换</h3>
-        <span id="usb-status-badge" class="status-badge" style="background: #eee; border-color: #ccc; color: #888;">检测中...</span>
+        <h3>🔌 ADB 控制</h3>
+        <span id="adb-status-badge" class="status-badge" style="background: #eee; border-color: #ccc; color: #888;">检测中...</span>
     </div>
     <div class="info-table">
+        <!-- USB 调试端口 -->
         <div class="operator-line">
             <div class="op-brand">
-                <h2 id="usb-status-text">正在获取状态...</h2>
+                <b style="font-size: 14px;">USB 调试端口</b>
+                <div class="input-desc">开启后可通过 USB 连接进行 adb 调试</div>
             </div>
             <div class="ios-switch">
-                <input type="checkbox" id="usb-toggle">
-                <label for="usb-toggle" class="ios-slider"></label>
+                <input type="checkbox" id="adb-usb-toggle">
+                <label for="adb-usb-toggle" class="ios-slider"></label>
             </div>
+        </div>
+
+        <div style="height:1px; background:var(--border-color); margin:12px 0;"></div>
+
+        <!-- 网络 ADB -->
+        <div class="operator-line">
+            <div class="op-brand">
+                <b style="font-size: 14px;">网络 ADB</b>
+                <div class="input-desc" id="adbnet-desc">开启后可通过 adb connect 连接</div>
+            </div>
+            <div class="ios-switch">
+                <input type="checkbox" id="adbnet-toggle">
+                <label for="adbnet-toggle" class="ios-slider"></label>
+            </div>
+        </div>
+
+        <!-- 网络 ADB 端口 -->
+        <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:14px;">
+            <label style="font-size:12px; color:var(--text-sub);">端口</label>
+            <input type="number" id="adbnet-port" value="5555" min="1" max="65535"
+                   style="width:90px; padding:6px 8px; background:var(--card-bg); color:var(--text-main); border:1px solid var(--border-color); border-radius:4px; font-size:13px;"/>
+            <button id="adbnet-apply" class="badge" style="border:none; cursor:pointer;">应用端口</button>
         </div>
     </div>
 </div>
@@ -21,7 +45,8 @@
         <h3>ℹ️ 说明</h3>
     </div>
     <div style="font-size: 13px; color: #666; line-height: 1.6;">
-        <p>1. USB 端口切换用于控制设备的 USB 调试/数据接口状态。</p>
-        <p>2. 开启后可通过 USB 连接设备进行调试或数据传输。</p>
+        <p>1. <b>USB 调试端口</b>：控制 USB 调试接口的开关。</p>
+        <p>2. <b>网络 ADB</b>：开启后可用 <code>adb connect 设备IP:端口</code> 进行无线调试（需 root）。</p>
+        <p>3. 修改端口后点「应用端口」，需保持网络 ADB 开启状态。</p>
     </div>
 </div>

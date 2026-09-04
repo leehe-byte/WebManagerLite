@@ -299,6 +299,12 @@ const NetInfoModule = {
             const usbStatusTxt = document.getElementById('ctrl-usbwifi-status');
             if (!usbSwitch) return;
 
+            // 读取后端保存的开关配置（权威），同步 UI 状态，避免刷新后与实际脱节
+            try {
+                const cfg = await Api.get('/api/wifi/auto-switch');
+                usbSwitch.checked = !!(cfg && cfg.enabled);
+            } catch (e) { /* 读取失败保持原样 */ }
+
             // 检测 usb0 当前状态
             const usbStatus = await Api.get('/api/usb0/status');
             const usbConnected = usbStatus && usbStatus.is_up === true;

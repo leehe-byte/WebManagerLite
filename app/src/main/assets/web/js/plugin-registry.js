@@ -56,12 +56,13 @@ const PluginRegistry = {
 
     getPlugin(id) { return this.registered[id] || null; },
 
-    /** 收集全部插件声明的 overview 卡片 */
+    /** 收集全部插件声明的 overview 卡片（overview:false 的卡片不进总览，可只用作其他渲染） */
     getCards() {
         const cards = [];
         for (const p of Object.values(this.registered)) {
             if (p.cards && Array.isArray(p.cards)) {
                 for (const c of p.cards) {
+                    if (c.overview === false) continue;
                     cards.push({ pluginId: p.id, title: c.title || p.title, ...c });
                 }
             }
@@ -69,9 +70,13 @@ const PluginRegistry = {
         return cards;
     },
 
-    /** 刷新所有插件卡片（overview 轮询时调用） */
+    /**
+     * 刷新插件卡片（overview 轮询时调用）。
+     * refreshMs 语义：缺省 5000；0 = 一次性（仅在 renderCards 时渲染一次，不轮询）。
+     */
     refreshCards() {
         for (const card of this.getCards()) {
+            if (card.refreshMs === 0) continue;
             try {
                 if (typeof card.render === 'function') card.render();
             } catch (e) {
@@ -96,6 +101,14 @@ const PluginRegistry = {
                 `<div class="card-header"><h3>${escapeHtml(card.icon || '🧩')} ${escapeHtml(card.title || '')}</h3></div>` +
                 `<div class="card-body" id="${bodyId}"></div>`;
             container.appendChild(box);
+        }
+        // 一次性卡片（refreshMs=0）在此渲染一次；其余交由 refreshCards 轮询
+        for (const card of cards) {
+            if (card.refreshMs === 0 && typeof card.render === 'function') {
+                try { card.render(); } catch (e) {
+                    console.error('插件卡片渲染失败:', card.pluginId, e);
+                }
+            }
         }
         this.refreshCards();
     }

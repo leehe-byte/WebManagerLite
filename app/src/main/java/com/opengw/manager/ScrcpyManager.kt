@@ -77,7 +77,9 @@ class ScrcpyManager(private val context: Context) {
         if (isStarting.getAndSet(true)) return
 
         serverScope?.cancel()
-        serverScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+        serverScope = CoroutineScope(Dispatchers.IO + SupervisorJob() + CoroutineExceptionHandler { _, e ->
+            Log.e(TAG, "scrcpy 协程未捕获异常（已兜底）: ${e.message}")
+        })
         serverScope?.launch {
             try {
                 // 启动前先确保文件已部署
@@ -93,10 +95,19 @@ class ScrcpyManager(private val context: Context) {
                 serverProcess = Runtime.getRuntime().exec(arrayOf("su", "shell", "-c", cmd))
 
                 launch {
-                    serverProcess?.inputStream?.bufferedReader()?.forEachLine { Log.d(TAG, "[STDOUT] $it") }
+                    // 进程被 destroy 时流关闭会抛 IOException，必须捕获避免未处理异常导致进程崩溃
+                    try {
+                        serverProcess?.inputStream?.bufferedReader()?.forEachLine { Log.d(TAG, "[STDOUT] $it") }
+                    } catch (e: Exception) {
+                        Log.d(TAG, "[STDOUT] 读取结束: ${e.message}")
+                    }
                 }
                 launch {
-                    serverProcess?.errorStream?.bufferedReader()?.forEachLine { Log.e(TAG, "[STDERR] $it") }
+                    try {
+                        serverProcess?.errorStream?.bufferedReader()?.forEachLine { Log.e(TAG, "[STDERR] $it") }
+                    } catch (e: Exception) {
+                        Log.d(TAG, "[STDERR] 读取结束: ${e.message}")
+                    }
                 }
 
                 serverProcess?.waitFor()
@@ -156,8 +167,8 @@ class ScrcpyManager(private val context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "Session Error: ${e.message}")
         } finally {
-            videoSocket?.close()
-            controlSocket?.close()
+            try { videoSocket?.close() } catch (e: Exception) { Log.e(TAG, "close video err: ${e.message}") }
+            try { controlSocket?.close() } catch (e: Exception) { Log.e(TAG, "close control err: ${e.message}") }
         }
     }
 
@@ -177,9 +188,17 @@ class ScrcpyManager(private val context: Context) {
     }
 
     fun stopServer() {
-        serverProcess?.destroy()
+        try {
+            serverProcess?.destroy()
+        } catch (e: Exception) {
+            Log.e(TAG, "Destroy error: ${e.message}")
+        }
         serverProcess = null
-        serverScope?.cancel()
+        try {
+            serverScope?.cancel()
+        } catch (e: Exception) {
+            Log.e(TAG, "Scope cancel error: ${e.message}")
+        }
         serverScope = null
         Thread {
             try {

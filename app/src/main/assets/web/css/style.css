@@ -301,15 +301,17 @@ input:checked + .ios-slider:before { transform: translateX(20px); }
 }
 
 /* 弹窗样式 - 增强动画 */
-.modal-overlay { 
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
-    background: rgba(0,0,0,0.5); 
-    display: flex; align-items: center; justify-content: center; z-index: 2000; 
+.modal-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex; align-items: center; justify-content: center; z-index: 2000;
     visibility: hidden; opacity: 0;
     transition: opacity 0.3s ease, visibility 0.3s;
     backdrop-filter: blur(2px);
+    /* 关闭动画期间立即禁用点击，避免视觉消失但选项仍可点的穿透问题 */
+    pointer-events: none;
 }
-.modal-overlay.active { visibility: visible; opacity: 1; }
+.modal-overlay.active { visibility: visible; opacity: 1; pointer-events: auto; }
 
 .modal-container { 
     background: var(--card-bg); width: 85%; max-width: 350px; 

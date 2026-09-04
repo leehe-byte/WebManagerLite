@@ -152,10 +152,10 @@ const PluginsManagerModule = {
         if (fileInput) fileInput.value = '';
     },
 
-    /** 安装脚本输出（install.sh 的回显），转成弹窗里的 pre 展示 */
+    /** 安装脚本输出（install.sh 的回显），转成弹窗里的 pre 展示（统一主题样式） */
     outputHtml(res) {
         if (!res || !res.output || !res.output.trim()) return '';
-        return `<div style="margin-top:10px; text-align:left;"><pre style="max-height:180px; overflow:auto; background:#000; color:#00ff00; font-size:11px; padding:10px; border-radius:6px;">${escapeHtml(res.output)}</pre></div>`;
+        return `<div style="margin-top:12px; text-align:left;"><pre style="max-height:280px; overflow:auto; background:var(--inner-bg); color:var(--text-main); font-size:12px; line-height:1.5; padding:12px; border:1px solid var(--border-color); border-radius:6px;">${escapeHtml(res.output)}</pre></div>`;
     },
 
     async run(id, action) {

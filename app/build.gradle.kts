@@ -1,3 +1,5 @@
+import java.util.Base64
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -17,10 +19,29 @@ android {
         setProperty("archivesBaseName", "${rootProject.name}-${versionName}")
     }
 
+    // release 签名：keystore 由环境变量提供（GitHub Actions secrets 传入），本地无 env 时不签名
+    signingConfigs {
+        create("release") {
+            val b64 = System.getenv("KEYSTORE_BASE64")
+            if (!b64.isNullOrBlank()) {
+                val keystoreFile = File.createTempFile("opengw_release", ".jks")
+                keystoreFile.writeBytes(Base64.getDecoder().decode(b64))
+                storeFile = keystoreFile
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+                keyAlias = System.getenv("KEY_ALIAS") ?: ""
+                keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+            }
+        }
+    }
+
     buildTypes {
+        val hasReleaseKey = !System.getenv("KEYSTORE_BASE64").isNullOrBlank()
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (hasReleaseKey) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 

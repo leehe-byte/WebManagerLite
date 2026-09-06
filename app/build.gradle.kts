@@ -25,7 +25,8 @@ android {
             val b64 = System.getenv("KEYSTORE_BASE64")
             if (!b64.isNullOrBlank()) {
                 val keystoreFile = File.createTempFile("opengw_release", ".jks")
-                keystoreFile.writeBytes(Base64.getDecoder().decode(b64))
+                // secrets 中的 base64 可能含换行/空白，先剔除再解码
+                keystoreFile.writeBytes(Base64.getDecoder().decode(b64.filterNot { it.isWhitespace() }))
                 storeFile = keystoreFile
                 storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
                 keyAlias = System.getenv("KEY_ALIAS") ?: ""
